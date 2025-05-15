@@ -2244,7 +2244,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "976dd42dc7e85965fe702eb8164f21f450704bdde31faefd6471dba214cb594e"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -6019,7 +6019,7 @@ dependencies = [
 [[package]]
 name = "pico-derive"
 version = "0.1.0"
-source = "git+https://github.com/brevis-network/pico#1aa4bfdef1d0a7aa5eef484b4875728c4a42dc07"
+source = "git+https://github.com/brevis-network/pico?tag=v1.1.3#d67fb4389d7d14d55f8ae6d156f436649b9dab2d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6028,8 +6028,8 @@ dependencies = [
 
 [[package]]
 name = "pico-patch-libs"
-version = "1.1.2"
-source = "git+https://github.com/brevis-network/pico#1aa4bfdef1d0a7aa5eef484b4875728c4a42dc07"
+version = "1.1.3"
+source = "git+https://github.com/brevis-network/pico?tag=v1.1.3#d67fb4389d7d14d55f8ae6d156f436649b9dab2d"
 dependencies = [
  "bincode",
  "serde",
@@ -6037,8 +6037,8 @@ dependencies = [
 
 [[package]]
 name = "pico-sdk"
-version = "1.1.2"
-source = "git+https://github.com/brevis-network/pico#1aa4bfdef1d0a7aa5eef484b4875728c4a42dc07"
+version = "1.1.3"
+source = "git+https://github.com/brevis-network/pico?tag=v1.1.3#d67fb4389d7d14d55f8ae6d156f436649b9dab2d"
 dependencies = [
  "anyhow",
  "bincode",
@@ -6063,8 +6063,8 @@ dependencies = [
 
 [[package]]
 name = "pico-vm"
-version = "1.1.2"
-source = "git+https://github.com/brevis-network/pico#1aa4bfdef1d0a7aa5eef484b4875728c4a42dc07"
+version = "1.1.3"
+source = "git+https://github.com/brevis-network/pico?tag=v1.1.3#d67fb4389d7d14d55f8ae6d156f436649b9dab2d"
 dependencies = [
  "anyhow",
  "arrayref",
@@ -6479,7 +6479,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -6978,7 +6978,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -8162,7 +8162,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

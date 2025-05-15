@@ -1,6 +1,6 @@
 use pico_sdk::client::DefaultProverClient;
 use std::process::Command;
-use zkvm_interface::{Compiler, ProgramProvingReport, zkVM};
+use zkvm_interface::{Compiler, ProgramExecutionReport, ProgramProvingReport, zkVM};
 
 mod error;
 use error::PicoError;
@@ -62,9 +62,17 @@ impl zkVM<PICO_TARGET> for ErePico {
 
     fn execute(
         &self,
-        _inputs: &zkvm_interface::Input,
+        inputs: &zkvm_interface::Input,
     ) -> Result<zkvm_interface::ProgramExecutionReport, Self::Error> {
-        todo!("pico currently does not have an execute method exposed via the SDK")
+        let client = DefaultProverClient::new(&self.program);
+
+        let mut stdin = client.new_stdin_builder();
+        for input in inputs.chunked_iter() {
+            stdin.write_slice(input);
+        }
+        let num_cycles = client.emulate(stdin);
+
+        Ok(ProgramExecutionReport::new(num_cycles))
     }
 
     fn prove(
@@ -99,11 +107,9 @@ impl zkVM<PICO_TARGET> for ErePico {
         Ok((proof_serialized, ProgramProvingReport::new(elapsed)))
     }
 
-    fn verify(&self, _proof: &[u8]) -> Result<(), Self::Error> {
+    fn verify(&self, proof: &[u8]) -> Result<(), Self::Error> {
         let client = DefaultProverClient::new(&self.program);
-
         let _vk = client.riscv_vk();
-
         todo!("Verification method missing from sdk")
     }
 }
