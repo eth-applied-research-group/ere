@@ -24,7 +24,7 @@ pub(crate) fn package_name_from_manifest(manifest_path: &Path) -> Result<String,
 
 /// Serializes the public input (as raw bytes) and proof into a single byte vector
 pub fn serialize_public_input_with_proof(
-    public_input: &Vec<u8>,
+    public_input: &[u8],
     proof: &JoltHyperKZGProof,
 ) -> Result<Vec<u8>, SerializationError> {
     let mut buffer = Vec::new();

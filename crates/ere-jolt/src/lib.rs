@@ -1,3 +1,4 @@
+use error::JoltError;
 use jolt_core::host::Program;
 use jolt_methods::{preprocess_prover, preprocess_verifier, prove_generic, verify_generic};
 use jolt_sdk::host::DEFAULT_TARGET_DIR;
@@ -5,19 +6,17 @@ use utils::{
     deserialize_public_input_with_proof, package_name_from_manifest,
     serialize_public_input_with_proof,
 };
-use zkvm_interface::{Compiler, Input, ProgramExecutionReport, ProgramProvingReport, zkVM};
+use zkvm_interface::{
+    Compiler, Input, ProgramExecutionReport, ProgramProvingReport, ProverResourceType, zkVM,
+    zkVMError,
+};
 
+mod error;
 mod jolt_methods;
 mod utils;
 
 #[allow(non_camel_case_types)]
 pub struct JOLT_TARGET;
-
-#[derive(Debug, thiserror::Error)]
-pub enum JoltError {
-    #[error("Proof verification failed")]
-    ProofVerificationFailed,
-}
 
 impl Compiler for JOLT_TARGET {
     type Error = JoltError;
@@ -42,31 +41,35 @@ pub struct EreJolt {
     program: <JOLT_TARGET as Compiler>::Program,
 }
 
-impl zkVM<JOLT_TARGET> for EreJolt {
-    type Error = JoltError;
-
-    fn new(program: <JOLT_TARGET as Compiler>::Program) -> Self {
-        EreJolt { program: program }
+impl EreJolt {
+    pub fn new(
+        program: <JOLT_TARGET as Compiler>::Program,
+        _resource_type: ProverResourceType,
+    ) -> Self {
+        EreJolt { program }
     }
-
+}
+impl zkVM for EreJolt {
     fn execute(
         &self,
-        inputs: &zkvm_interface::Input,
-    ) -> Result<zkvm_interface::ProgramExecutionReport, Self::Error> {
+        _inputs: &Input,
+    ) -> Result<zkvm_interface::ProgramExecutionReport, zkVMError> {
         // TODO: check ProgramSummary
-        let summary = self
-            .program
-            .clone()
-            .trace_analyze::<jolt::F>(inputs.bytes());
-        let trace_len = summary.trace_len();
+        // TODO: FIXME
+        // let summary = self
+        //     .program
+        //     .clone()
+        //     .trace_analyze::<jolt::F>(inputs.bytes());
+        // let trace_len = summary.trace_len();
+        let trace_len = 0;
 
         Ok(ProgramExecutionReport::new(trace_len as u64))
     }
 
     fn prove(
         &self,
-        inputs: &zkvm_interface::Input,
-    ) -> Result<(Vec<u8>, zkvm_interface::ProgramProvingReport), Self::Error> {
+        inputs: &Input,
+    ) -> Result<(Vec<u8>, zkvm_interface::ProgramProvingReport), zkVMError> {
         // TODO: make this stateful and do in setup since its expensive and should be done once per program;
         let preprocessed_key = preprocess_prover(&self.program);
 
@@ -80,14 +83,14 @@ impl zkVM<JOLT_TARGET> for EreJolt {
         Ok((proof_with_public_inputs, ProgramProvingReport::new(elapsed)))
     }
 
-    fn verify(&self, proof_with_public_inputs: &[u8]) -> Result<(), Self::Error> {
+    fn verify(&self, proof_with_public_inputs: &[u8]) -> Result<(), zkVMError> {
         let preprocessed_verifier = preprocess_verifier(&self.program);
         let (public_inputs, proof) =
             deserialize_public_input_with_proof(proof_with_public_inputs).unwrap();
 
         let mut outputs = Input::new();
         assert!(public_inputs.is_empty());
-        outputs.write(&public_inputs).unwrap();
+        outputs.write(public_inputs);
 
         // TODO: I don't think we should require the inputs when verifying
         let inputs = Input::new();
@@ -96,7 +99,7 @@ impl zkVM<JOLT_TARGET> for EreJolt {
         if valid {
             Ok(())
         } else {
-            Err(JoltError::ProofVerificationFailed)
+            Err(zkVMError::from(JoltError::ProofVerificationFailed))
         }
     }
 }
@@ -105,7 +108,7 @@ impl zkVM<JOLT_TARGET> for EreJolt {
 mod tests {
     use crate::{EreJolt, JOLT_TARGET};
     use std::path::PathBuf;
-    use zkvm_interface::{Compiler, Input, zkVM};
+    use zkvm_interface::{Compiler, Input, ProverResourceType, zkVM};
 
     // TODO: for now, we just get one test file
     // TODO: but this should get the whole directory and compile each test
@@ -133,9 +136,9 @@ mod tests {
         let test_guest_path = get_compile_test_guest_program_path();
         let program = JOLT_TARGET::compile(&test_guest_path).unwrap();
         let mut inputs = Input::new();
-        inputs.write(&(1 as u32)).unwrap();
+        inputs.write(1 as u32);
 
-        let zkvm = EreJolt::new(program);
+        let zkvm = EreJolt::new(program, ProverResourceType::Cpu);
         let _execution = zkvm.execute(&inputs).unwrap();
     }
     // #[test]

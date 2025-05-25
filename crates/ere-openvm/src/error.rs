@@ -1,4 +1,11 @@
 use thiserror::Error;
+use zkvm_interface::zkVMError;
+
+impl From<OpenVMError> for zkVMError {
+    fn from(value: OpenVMError) -> Self {
+        zkVMError::Other(Box::new(value))
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum OpenVMError {

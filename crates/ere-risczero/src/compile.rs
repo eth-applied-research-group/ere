@@ -1,5 +1,6 @@
 mod file_utils;
 use file_utils::FileRestorer;
+use risc0_zkvm::Digest;
 
 use crate::error::CompileError;
 use serde_json::Value as JsonValue;
@@ -9,13 +10,21 @@ use std::{
     process::Command,
 };
 
+#[derive(Debug, Clone)]
+pub struct Risc0Program {
+    // TODO: Seems like the risc0 compilation is also compiling
+    // TODO: the analogous prover and verifying key
+    pub(crate) elf: Vec<u8>,
+    pub(crate) image_id: Digest,
+}
+
 /// BUILD_SCRIPT_TEMPLATE that we will use to fetch the elf-path
 /// TODO: We might be able to deterministically get the elf path
 /// TODO: But note we also probably want the image id too, so not sure
 /// TODO: we can remove this hack sometime soon.
 const BUILD_SCRIPT_TEMPLATE: &str = include_str!("../build_script_template.rs");
 
-pub(crate) fn compile_risczero_program(path: &Path) -> Result<Vec<u8>, CompileError> {
+pub(crate) fn compile_risczero_program(path: &Path) -> Result<Risc0Program, CompileError> {
     if !path.exists() || !path.is_dir() {
         return Err(CompileError::InvalidMethodsPath(path.to_path_buf()));
     }
@@ -56,9 +65,14 @@ pub(crate) fn compile_risczero_program(path: &Path) -> Result<Vec<u8>, CompileEr
             field: "elf_path",
             file: info_file.clone(),
         })?;
+    let image_id_hex_str = info_json["image_id_hex"].as_str().unwrap();
+    let image_id = hex::decode(image_id_hex_str).unwrap();
+    let image_id = image_id.try_into().unwrap();
 
-    // Return bytes
-    fs::read(&elf_path).map_err(|e| CompileError::io(e, "reading ELF file"))
+    // Return Program
+    fs::read(&elf_path)
+        .map_err(|e| CompileError::io(e, "reading ELF file"))
+        .map(|elf| Risc0Program { elf, image_id })
 }
 
 #[cfg(test)]
@@ -85,7 +99,10 @@ mod tests {
 
             let program =
                 compile_risczero_program(&test_methods_path).expect("risc0 compilation failed");
-            assert!(!program.is_empty(), "Risc0 ELF bytes should not be empty.");
+            assert!(
+                !program.elf.is_empty(),
+                "Risc0 ELF bytes should not be empty."
+            );
         }
     }
 }

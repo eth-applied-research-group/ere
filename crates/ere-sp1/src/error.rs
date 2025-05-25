@@ -1,6 +1,13 @@
 use std::{path::PathBuf, process::ExitStatus};
 
 use thiserror::Error;
+use zkvm_interface::zkVMError;
+
+impl From<SP1Error> for zkVMError {
+    fn from(value: SP1Error) -> Self {
+        zkVMError::Other(Box::new(value))
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum SP1Error {

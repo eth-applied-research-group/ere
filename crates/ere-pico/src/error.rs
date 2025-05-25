@@ -1,5 +1,12 @@
 use std::{io, path::PathBuf, process::ExitStatus};
 use thiserror::Error;
+use zkvm_interface::zkVMError;
+
+impl From<PicoError> for zkVMError {
+    fn from(value: PicoError) -> Self {
+        zkVMError::Other(Box::new(value))
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum PicoError {

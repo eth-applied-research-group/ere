@@ -1,6 +1,9 @@
 use pico_sdk::client::DefaultProverClient;
 use std::process::Command;
-use zkvm_interface::{Compiler, ProgramProvingReport, zkVM};
+use zkvm_interface::{
+    Compiler, Input, InputItem, ProgramExecutionReport, ProgramProvingReport, ProverResourceType,
+    zkVM, zkVMError,
+};
 
 mod error;
 use error::PicoError;
@@ -51,31 +54,44 @@ pub struct ErePico {
     program: <PICO_TARGET as Compiler>::Program,
 }
 
-impl zkVM<PICO_TARGET> for ErePico {
-    type Error = PicoError;
-
-    fn new(program_bytes: <PICO_TARGET as Compiler>::Program) -> Self {
+impl ErePico {
+    pub fn new(
+        program_bytes: <PICO_TARGET as Compiler>::Program,
+        _resource_type: ProverResourceType,
+    ) -> Self {
         ErePico {
             program: program_bytes,
         }
     }
+}
+impl zkVM for ErePico {
+    fn execute(&self, inputs: &Input) -> Result<ProgramExecutionReport, zkVMError> {
+        let client = DefaultProverClient::new(&self.program);
 
-    fn execute(
-        &self,
-        _inputs: &zkvm_interface::Input,
-    ) -> Result<zkvm_interface::ProgramExecutionReport, Self::Error> {
-        todo!("pico currently does not have an execute method exposed via the SDK")
+        let mut stdin = client.new_stdin_builder();
+        for input in inputs.iter() {
+            match input {
+                InputItem::Object(serialize) => stdin.write(serialize),
+                InputItem::Bytes(items) => stdin.write_slice(items),
+            }
+        }
+        let num_cycles = client.emulate(stdin);
+
+        Ok(ProgramExecutionReport::new(num_cycles))
     }
 
     fn prove(
         &self,
-        inputs: &zkvm_interface::Input,
-    ) -> Result<(Vec<u8>, zkvm_interface::ProgramProvingReport), Self::Error> {
+        inputs: &Input,
+    ) -> Result<(Vec<u8>, zkvm_interface::ProgramProvingReport), zkVMError> {
         let client = DefaultProverClient::new(&self.program);
 
         let mut stdin = client.new_stdin_builder();
-        for input in inputs.chunked_iter() {
-            stdin.write_slice(input);
+        for input in inputs.iter() {
+            match input {
+                InputItem::Object(serialize) => stdin.write(serialize),
+                InputItem::Bytes(items) => stdin.write_slice(items),
+            }
         }
         let now = std::time::Instant::now();
         let meta_proof = client.prove(stdin).expect("Failed to generate proof");
@@ -99,11 +115,9 @@ impl zkVM<PICO_TARGET> for ErePico {
         Ok((proof_serialized, ProgramProvingReport::new(elapsed)))
     }
 
-    fn verify(&self, _proof: &[u8]) -> Result<(), Self::Error> {
+    fn verify(&self, _proof: &[u8]) -> Result<(), zkVMError> {
         let client = DefaultProverClient::new(&self.program);
-
         let _vk = client.riscv_vk();
-
         todo!("Verification method missing from sdk")
     }
 }
