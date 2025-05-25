@@ -40,17 +40,10 @@ echo "Running the 'ziskup' binary installer script..."
 "${ZISKUP_INSTALLER_DOWNLOAD_PATH}" # This script installs $HOME/.zisk/bin/ziskup
 rm "${ZISKUP_INSTALLER_DOWNLOAD_PATH}" # Clean up the downloaded installer script
 
-# Step 2: Ensure the installed ziskup binary is in PATH for this script session.
-ZISK_BIN_DIR="${HOME}/.zisk/bin"
-if [ -d "${ZISK_BIN_DIR}" ] && [[ ":$PATH:" != *":${ZISK_BIN_DIR}:"* ]]; then
-    echo "Adding ${ZISK_BIN_DIR} to PATH for current script session."
-    export PATH="${ZISK_BIN_DIR}:$PATH"
-fi
-
 # Ensure the ziskup binary itself is now installed and executable
 ensure_tool_installed "ziskup" "ZisK SDK manager tool"
 
-# Step 3: Now run the installed ziskup binary with non-interactive flags.
+# Step 2: Now run the installed ziskup binary with non-interactive flags.
 echo "Running 'ziskup --provingkey' to install ZisK components..."
 # Export GH_RUNNER=true to ensure ziskup uses default non-interactive options.
 export GH_RUNNER=true
