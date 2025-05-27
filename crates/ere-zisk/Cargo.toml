@@ -10,6 +10,8 @@ zkvm-interface = { workspace = true }
 thiserror = "2"
 toml = "0.8"
 tracing = "0.1"
+ziskemu = { git = "https://github.com/0xPolygonHermez/zisk", rev = "f9a3655" }
+zisk-core = { git = "https://github.com/0xPolygonHermez/zisk", rev = "f9a3655" }
 
 [lib]
 name = "ere_zisk"

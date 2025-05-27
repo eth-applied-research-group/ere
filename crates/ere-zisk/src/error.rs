@@ -11,7 +11,10 @@ impl From<ZiskError> for zkVMError {
 #[derive(Debug, Error)]
 pub enum ZiskError {
     #[error(transparent)]
-    CompileError(#[from] CompileError),
+    Compile(#[from] CompileError),
+
+    #[error(transparent)]
+    Execute(#[from] ExecuteError),
 }
 
 #[derive(Debug, Error)]
@@ -53,4 +56,16 @@ pub enum CompileError {
         #[source]
         source: io::Error,
     },
+}
+
+#[derive(Debug, Error)]
+pub enum ExecuteError {
+    #[error("Failed to serialize input: {0}")]
+    SerializeInput(Box<dyn std::error::Error + Send + Sync>),
+    #[error("Failed to convert ELF to ZisK ROM: {0}")]
+    Riscv2ziskFailed(String),
+    #[error("Emulation doesn't terminate")]
+    EmulationNotTerminate,
+    #[error("Total steps not found in report")]
+    TotalStepsNotFound,
 }
