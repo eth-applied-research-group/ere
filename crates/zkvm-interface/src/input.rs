@@ -1,3 +1,4 @@
+use bincode::Options;
 use erased_serde::Serialize as ErasedSerialize;
 use serde::Serialize;
 
@@ -69,12 +70,14 @@ impl InputItem {
     }
 
     /// Get the item as bytes (serialize objects, return bytes directly)
-    pub fn as_bytes(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    pub fn as_bytes(&self) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
         match self {
             InputItem::Object(obj) => {
                 let mut buf = Vec::new();
-                let mut serializer =
-                    bincode::Serializer::new(&mut buf, bincode::DefaultOptions::new());
+                let mut serializer = bincode::Serializer::new(
+                    &mut buf,
+                    bincode::DefaultOptions::new().with_fixint_encoding(),
+                );
                 erased_serde::serialize(obj.as_ref(), &mut serializer)?;
                 Ok(buf)
             }
