@@ -40,13 +40,13 @@ RUN chmod +x /tmp/install_zisk_sdk.sh
 RUN /tmp/install_zisk_sdk.sh && rm /tmp/install_zisk_sdk.sh # Clean up the script
 
 # The 'zisk' Rust toolchain is now installed.
-# cargo-zisk is installed in $HOME/.zisk/bin.
-# The install_zisk_sdk.sh script adds $HOME/.zisk/bin to PATH for its session.
-# For the image environment, we need to ensure $HOME/.zisk/bin is persistently in PATH.
-ENV ZISK_TOOLS_BIN_DIR="${HOME}/.zisk/bin"
-ENV PATH="${ZISK_TOOLS_BIN_DIR}:${PATH}"
+# cargo-zisk is installed in /root/.zisk/bin.
+# The ziskup script adds /root/.zisk/bin to PATH for its session.
+# For the image environment, we need to ensure /root/.zisk/bin is persistently in PATH.
+ENV ZISK_BIN_DIR="/root/.zisk/bin"
+ENV PATH="${PATH}:${ZISK_BIN_DIR}"
 
 # Verify cargo-zisk is accessible
-RUN echo "Verifying Zisk installation in Dockerfile ..." && cargo +zisk zisk --version
+RUN echo "Verifying Zisk installation in Dockerfile ..." && cargo-zisk --version
 
 CMD ["/bin/bash"]
