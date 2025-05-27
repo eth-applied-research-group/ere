@@ -8,6 +8,7 @@ members = [
     "crates/ere-openvm",
     "crates/ere-pico",
     "crates/ere-jolt",
+    "crates/ere-zisk",
 ]
 resolver = "2"
 
