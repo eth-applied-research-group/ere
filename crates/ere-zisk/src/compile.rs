@@ -2,7 +2,7 @@ use crate::error::CompileError;
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
 };
 use toml::Value as TomlValue;
 use tracing::info;
@@ -54,8 +54,6 @@ pub fn compile_zisk_program(program_crate_path: &Path) -> Result<PathBuf, Compil
     let status = Command::new("cargo-zisk")
         .current_dir(program_crate_path)
         .args(["build", "--release"])
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
         .status()
         .map_err(|e| CompileError::CargoZiskBuild {
             cwd: program_crate_path.to_path_buf(),
@@ -74,12 +72,33 @@ pub fn compile_zisk_program(program_crate_path: &Path) -> Result<PathBuf, Compil
         .join("riscv64ima-zisk-zkvm-elf")
         .join("release")
         .join(program_name);
-    elf_path
+    let elf_path = elf_path
         .canonicalize()
         .map_err(|e| CompileError::ElfNotFound {
             path: elf_path,
             source: e,
-        })
+        })?;
+
+    // FIXME: This currently uses global build directory `${HOME}/.zisk/zisk/emulator-asm`
+    //        which causes `compile_zisk_program` to panic if ran in parallel.
+    //        We should create a temporary directory and copy only necessary
+    //        data to setup each ELF.
+    let status = Command::new("cargo-zisk")
+        .current_dir(program_crate_path)
+        .arg("rom-setup")
+        .arg("-e")
+        .arg(&elf_path)
+        .status()
+        .map_err(|e| CompileError::CargoZiskRomSetup { source: e })?;
+
+    if !status.success() {
+        return Err(CompileError::CargoZiskRomSetupFailed {
+            status,
+            path: program_crate_path.to_path_buf(),
+        });
+    }
+
+    Ok(elf_path)
 }
 
 #[cfg(test)]
@@ -116,7 +135,7 @@ mod tests {
                 );
             }
             Err(e) => {
-                panic!("compile failed for dedicated guest: {:?}", e);
+                panic!("compile failed for dedicated guest: {e:?}");
             }
         }
     }
@@ -132,10 +151,7 @@ mod tests {
                 );
             }
             Err(e) => {
-                panic!(
-                    "compile_zisk_program direct call failed for dedicated guest: {:?}",
-                    e
-                );
+                panic!("compile_zisk_program direct call failed for dedicated guest: {e:?}");
             }
         }
     }

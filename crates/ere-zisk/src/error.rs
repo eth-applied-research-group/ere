@@ -15,6 +15,12 @@ pub enum ZiskError {
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),
+
+    #[error(transparent)]
+    Prove(#[from] ProveError),
+
+    #[error(transparent)]
+    Verify(#[from] VerifyError),
 }
 
 #[derive(Debug, Error)]
@@ -36,8 +42,6 @@ pub enum CompileError {
         #[source]
         source: io::Error,
     },
-    #[error("`cargo-zisk build --release` failed with status: {status} for program at {path}")]
-    CargoZiskBuildFailed { status: ExitStatus, path: PathBuf },
     #[error("Failed to read file at {path}: {source}")]
     ReadFile {
         path: PathBuf,
@@ -56,16 +60,62 @@ pub enum CompileError {
         #[source]
         source: io::Error,
     },
+    #[error("`cargo-zisk build --release` failed with status: {status} for program at {path}")]
+    CargoZiskBuildFailed { status: ExitStatus, path: PathBuf },
+    #[error("Failed to execute `cargo-zisk rom-setup`: {source}")]
+    CargoZiskRomSetup {
+        #[source]
+        source: io::Error,
+    },
+    #[error("`cargo-zisk rom-setup` failed with status: {status} for program at {path}")]
+    CargoZiskRomSetupFailed { status: ExitStatus, path: PathBuf },
 }
 
 #[derive(Debug, Error)]
 pub enum ExecuteError {
+    #[error("IO failure: {0}")]
+    Io(io::Error),
     #[error("Failed to serialize input: {0}")]
     SerializeInput(Box<dyn std::error::Error + Send + Sync>),
-    #[error("Failed to convert ELF to ZisK ROM: {0}")]
-    Riscv2ziskFailed(String),
-    #[error("Emulation doesn't terminate")]
-    EmulationNotTerminate,
+    #[error("Failed to execute `ziskemu`: {source}")]
+    Ziskemu {
+        #[source]
+        source: io::Error,
+    },
+    #[error("`ziskemu` failed with status: {status}")]
+    ZiskemuFailed { status: ExitStatus },
     #[error("Total steps not found in report")]
     TotalStepsNotFound,
+}
+
+#[derive(Debug, Error)]
+pub enum ProveError {
+    #[error("IO failure: {0}")]
+    Io(io::Error),
+    #[error("Failed to serialize input: {0}")]
+    SerializeInput(Box<dyn std::error::Error + Send + Sync>),
+    #[error("Failed to execute `cargo prove`: {source}")]
+    CargoZiskProve {
+        #[source]
+        source: io::Error,
+    },
+    #[error("`cargo prove` failed with status: {status}")]
+    CargoZiskProveFailed { status: ExitStatus },
+    #[error("Serialising proof with `bincode` failed: {0}")]
+    Bincode(#[from] bincode::Error),
+}
+
+#[derive(Debug, Error)]
+pub enum VerifyError {
+    #[error("IO failure: {0}")]
+    Io(io::Error),
+    #[error("Deserialising proof with `bincode` failed: {0}")]
+    Bincode(#[from] bincode::Error),
+    #[error("Failed to execute `cargo-zisk verify`: {source}")]
+    CargoZiskVerify {
+        #[source]
+        source: io::Error,
+    },
+    #[error("Invalid proof: {0}")]
+    InvalidProof(String),
 }
