@@ -314,8 +314,13 @@ mod prove_tests {
 
         assert!(zkvm.verify(&proof_bytes).is_ok());
 
-        let mut invalid_proof_bytes = proof_bytes;
-        invalid_proof_bytes[0] = invalid_proof_bytes[0].overflowing_add(1).0;
+        let invalid_proof_bytes = {
+            let mut invalid_proof: ZiskProofWithPublicValues =
+                bincode::deserialize(&proof_bytes).unwrap();
+            // alter the first digit of `evals[0][0]`
+            invalid_proof.proof[40] = invalid_proof.proof[40].overflowing_add(1).0;
+            bincode::serialize(&invalid_proof).unwrap()
+        };
         assert!(zkvm.verify(&invalid_proof_bytes).is_err());
 
         // TODO: Check public inputs
