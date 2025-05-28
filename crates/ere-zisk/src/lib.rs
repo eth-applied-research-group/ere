@@ -134,6 +134,9 @@ mod execute_tests {
         }
     }
 
+    // FIXME: The emulator panics due to some memory reading issue, but ideally
+    //        it shouldn't panic but instead returning error indicating the
+    //        non-zero exit code.
     #[test]
     #[should_panic]
     fn test_execute_zisk_no_input_for_guest_expecting_input() {
