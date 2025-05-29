@@ -91,7 +91,10 @@ impl zkVM for EreRisc0 {
                 }
             }
         }
-        let env = env.build().map_err(|err| zkVMError::Other(err.into()))?;
+        let env = env
+            .segment_limit_po2(24)
+            .build()
+            .map_err(|err| zkVMError::Other(err.into()))?;
 
         let now = std::time::Instant::now();
         let prove_info = prover
