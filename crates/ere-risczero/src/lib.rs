@@ -92,7 +92,7 @@ impl zkVM for EreRisc0 {
             }
         }
         let env = env
-            .segment_limit_po2(24)
+            .segment_limit_po2(22)
             .build()
             .map_err(|err| zkVMError::Other(err.into()))?;
 
