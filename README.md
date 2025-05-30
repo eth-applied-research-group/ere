@@ -40,16 +40,12 @@
 
 ## Supported zkVMs
 
-| zkVM      | Support    | Compile | Execute | Prove | Verify | Notes                               |
-| --------- | ---------- | :-----: | :-----: | :---: | :----: | ----------------------------------- |
-| SP1       | ✅ Full     |    ✅    |    ✅    |   ✅   |    ✅   | —                                   |
-| OpenVM    | ✅ Full     |    ✅    |    ✅    |   ✅   |    ✅   | —                                   |
-| RISC Zero | ✅ Full     |    ✅    |    ✅    |   ✅   |    ✅   | —                                   |
-| Jolt      | ⚠️ Partial |    ✅    |    ✅    |   ❌   |    ✅   | Prover incompatibility              |
-| Pico      | ⚠️ Partial |    ✅    |    ❌    |   ✅   |    ❌   | Missing execute & verify in API     |
-| Zisk      | ⚠️ Partial |    ❌    |    ❌    |   ❌   |    ❌   | `ziskup` currently broken in Docker |
-
-> **Legend** — ✅ implemented · ⚠️ partially implemented · ❌ not yet implemented
+- SP1
+- OpenVM
+- Risc Zero
+- Jolt
+- Pico
+- Zisk
 
 ## Quick Start
 
