@@ -29,7 +29,7 @@ ensure_tool_installed "git" "to install cargo-openvm from a git repository"
 ensure_tool_installed "cargo" "to build and install Rust packages"
 
 OPENVM_TOOLCHAIN_VERSION="nightly-2025-02-14"
-OPENVM_CLI_VERSION_TAG="v1.1.2"
+OPENVM_CLI_VERSION_TAG="v1.2.0"
 
 # Install the specific nightly toolchain for OpenVM
 echo "Installing OpenVM-specific Rust toolchain: ${OPENVM_TOOLCHAIN_VERSION}..."

@@ -6,6 +6,4 @@ edition = "2021"
 [workspace]
 
 [dependencies]
-openvm = { git = "https://github.com/openvm-org/openvm.git", features = [
-    "std",
-] }
+openvm = { git = "https://github.com/openvm-org/openvm.git", features = ["std"], tag = "v1.2.0" }
