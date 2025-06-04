@@ -25,6 +25,8 @@ pub enum ZiskError {
 
 #[derive(Debug, Error)]
 pub enum CompileError {
+    #[error("Failed to create temporary output directory: {0}")]
+    TempDir(#[from] std::io::Error),
     #[error("Program path does not exist or is not a directory: {0}")]
     InvalidProgramPath(PathBuf),
     #[error(
@@ -62,19 +64,12 @@ pub enum CompileError {
     },
     #[error("`cargo-zisk build --release` failed with status: {status} for program at {path}")]
     CargoZiskBuildFailed { status: ExitStatus, path: PathBuf },
-    #[error("Failed to execute `cargo-zisk rom-setup`: {source}")]
-    CargoZiskRomSetup {
-        #[source]
-        source: io::Error,
-    },
-    #[error("`cargo-zisk rom-setup` failed with status: {status} for program at {path}")]
-    CargoZiskRomSetupFailed { status: ExitStatus, path: PathBuf },
 }
 
 #[derive(Debug, Error)]
 pub enum ExecuteError {
-    #[error("IO failure: {0}")]
-    Io(io::Error),
+    #[error("IO failure in temporary directory: {0}")]
+    TempDir(io::Error),
     #[error("Failed to serialize input: {0}")]
     SerializeInput(Box<dyn std::error::Error + Send + Sync>),
     #[error("Failed to execute `ziskemu`: {source}")]
@@ -90,10 +85,17 @@ pub enum ExecuteError {
 
 #[derive(Debug, Error)]
 pub enum ProveError {
-    #[error("IO failure: {0}")]
-    Io(io::Error),
+    #[error("IO failure in temporary directory: {0}")]
+    TempDir(io::Error),
     #[error("Failed to serialize input: {0}")]
     SerializeInput(Box<dyn std::error::Error + Send + Sync>),
+    #[error("Failed to execute `cargo-zisk rom-setup`: {source}")]
+    CargoZiskRomSetup {
+        #[source]
+        source: io::Error,
+    },
+    #[error("`cargo-zisk rom-setup` failed with status: {status}")]
+    CargoZiskRomSetupFailed { status: ExitStatus },
     #[error("Failed to execute `cargo prove`: {source}")]
     CargoZiskProve {
         #[source]
@@ -107,8 +109,8 @@ pub enum ProveError {
 
 #[derive(Debug, Error)]
 pub enum VerifyError {
-    #[error("IO failure: {0}")]
-    Io(io::Error),
+    #[error("IO failure in temporary directory: {0}")]
+    TempDir(io::Error),
     #[error("Deserialising proof with `bincode` failed: {0}")]
     Bincode(#[from] bincode::Error),
     #[error("Failed to execute `cargo-zisk verify`: {source}")]

@@ -5,12 +5,12 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
-    io::Write,
+    io::{self, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    time::{self, Instant},
+    time,
 };
-use tempfile::tempdir;
+use tempfile::{TempDir, tempdir};
 use zkvm_interface::{
     Compiler, Input, ProgramExecutionReport, ProgramProvingReport, ProverResourceType, zkVM,
     zkVMError,
@@ -26,7 +26,7 @@ impl Compiler for RV64_IMA_ZISK_ZKVM_ELF {
     type Error = ZiskError;
 
     /// Path to compiled ELF.
-    type Program = PathBuf;
+    type Program = Vec<u8>;
 
     fn compile(path_to_program: &Path) -> Result<Self::Program, Self::Error> {
         compile_zisk_program(path_to_program).map_err(ZiskError::Compile)
@@ -42,13 +42,13 @@ pub struct ZiskProofWithPublicValues {
 }
 
 pub struct EreZisk {
-    elf_path: PathBuf,
+    elf: Vec<u8>,
     resource: ProverResourceType,
 }
 
 impl EreZisk {
-    pub fn new(elf_path: PathBuf, resource: ProverResourceType) -> Self {
-        Self { elf_path, resource }
+    pub fn new(elf: Vec<u8>, resource: ProverResourceType) -> Self {
+        Self { elf, resource }
     }
 }
 
@@ -56,6 +56,8 @@ impl EreZisk {}
 
 impl zkVM for EreZisk {
     fn execute(&self, input: &Input) -> Result<ProgramExecutionReport, zkVMError> {
+        // Write ELF and serialized input to file.
+
         let input_bytes = input
             .iter()
             .try_fold(Vec::new(), |mut acc, item| {
@@ -64,19 +66,24 @@ impl zkVM for EreZisk {
             })
             .map_err(ZiskError::Execute)?;
 
-        let output_dir = tempdir().map_err(|e| ZiskError::Execute(ExecuteError::Io(e)))?;
-        let input_path = input_path(output_dir.path());
+        let mut tempdir =
+            ZiskTempDir::new().map_err(|e| ZiskError::Execute(ExecuteError::TempDir(e)))?;
+        tempdir
+            .write_elf(&self.elf)
+            .map_err(|e| ZiskError::Execute(ExecuteError::TempDir(e)))?;
+        tempdir
+            .write_input(&input_bytes)
+            .map_err(|e| ZiskError::Execute(ExecuteError::TempDir(e)))?;
 
-        fs::File::create(&input_path)
-            .and_then(|mut file| file.write_all(&input_bytes))
-            .map_err(|e| ZiskError::Execute(ExecuteError::Io(e)))?;
+        // Execute.
 
+        let start = time::Instant::now();
         let output = Command::new("ziskemu")
-            .arg("-e")
-            .arg(&self.elf_path)
-            .arg("-i")
-            .arg(&input_path)
-            .arg("-x")
+            .arg("--elf")
+            .arg(tempdir.elf_path())
+            .arg("--inputs")
+            .arg(tempdir.input_path())
+            .arg("--stats") // NOTE: enable stats in order to get total steps.
             .stderr(Stdio::inherit())
             .output()
             .map_err(|e| ZiskError::Execute(ExecuteError::Ziskemu { source: e }))?;
@@ -87,8 +94,10 @@ impl zkVM for EreZisk {
             })
             .into());
         }
+        let execution_duration = start.elapsed();
 
-        let start = Instant::now();
+        // Extract cycle count from the stdout.
+
         let total_num_cycles = String::from_utf8_lossy(&output.stdout)
             .split_once("total steps = ")
             .and_then(|(_, stats)| {
@@ -101,12 +110,14 @@ impl zkVM for EreZisk {
 
         Ok(ProgramExecutionReport {
             total_num_cycles,
-            execution_duration: start.elapsed(),
+            execution_duration,
             ..Default::default()
         })
     }
 
     fn prove(&self, input: &Input) -> Result<(Vec<u8>, ProgramProvingReport), zkVMError> {
+        // Write ELF and serialized input to file.
+
         let input_bytes = input
             .iter()
             .try_fold(Vec::new(), |mut acc, item| {
@@ -115,30 +126,53 @@ impl zkVM for EreZisk {
             })
             .map_err(ZiskError::Prove)?;
 
-        let output_dir = tempdir().map_err(|e| ZiskError::Prove(ProveError::Io(e)))?;
-        let input_path = input_path(output_dir.path());
-        let proof_path = proof_path(output_dir.path());
-        let public_values_path = public_values_path(output_dir.path());
+        let mut tempdir =
+            ZiskTempDir::new().map_err(|e| ZiskError::Prove(ProveError::TempDir(e)))?;
+        tempdir
+            .write_elf(&self.elf)
+            .map_err(|e| ZiskError::Prove(ProveError::TempDir(e)))?;
+        tempdir
+            .write_input(&input_bytes)
+            .map_err(|e| ZiskError::Prove(ProveError::TempDir(e)))?;
 
-        fs::File::create(&input_path)
-            .and_then(|mut file| file.write_all(&input_bytes))
-            .map_err(|e| ZiskError::Prove(ProveError::Io(e)))?;
+        // Setup ROM.
+
+        // FIXME: This currently uses global build directory `${HOME}/.zisk/zisk/emulator-asm`
+        //        which causes `compile_zisk_program` to panic if ran in parallel.
+        //        We should create a temporary directory and copy only necessary
+        //        data to setup each ELF.
+        let status = Command::new("cargo-zisk")
+            .arg("rom-setup")
+            .arg("--elf")
+            .arg(tempdir.elf_path())
+            .arg("--output-dir")
+            .arg(tempdir.rom_dir_path())
+            .status()
+            .map_err(|e| ZiskError::Prove(ProveError::CargoZiskRomSetup { source: e }))?;
+
+        if !status.success() {
+            return Err(ZiskError::Prove(ProveError::CargoZiskRomSetupFailed { status }).into());
+        }
+
+        // Prove.
 
         let start = time::Instant::now();
         match self.resource {
             ProverResourceType::Cpu => {
                 let status = Command::new("cargo-zisk")
                     .arg("prove")
-                    .arg("-e")
-                    .arg(&self.elf_path)
-                    .arg("-i")
-                    .arg(&input_path)
-                    .arg("-o")
-                    .arg(output_dir.path())
+                    .arg("--elf")
+                    .arg(tempdir.elf_path())
+                    .arg("--asm")
+                    .arg(tempdir.asm_path())
+                    .arg("--input")
+                    .arg(tempdir.input_path())
+                    .arg("--output-dir")
+                    .arg(tempdir.output_dir_path())
                     // FIXME: Not sure why if we don't set the flag `aggregation`
                     //        there will be no proof, but ideally we should
                     //        only generate the core proof as other zkVMs.
-                    .arg("-a")
+                    .arg("--aggregation")
                     .status()
                     .map_err(|e| ZiskError::Prove(ProveError::CargoZiskProve { source: e }))?;
 
@@ -156,10 +190,15 @@ impl zkVM for EreZisk {
         }
         let proving_time = start.elapsed();
 
+        // Read proof and public values.
+
         let proof_with_public_values = ZiskProofWithPublicValues {
-            proof: fs::read(proof_path).map_err(|e| ZiskError::Prove(ProveError::Io(e)))?,
-            public_values: fs::read(public_values_path)
-                .map_err(|e| ZiskError::Prove(ProveError::Io(e)))?,
+            proof: tempdir
+                .read_proof()
+                .map_err(|e| ZiskError::Prove(ProveError::TempDir(e)))?,
+            public_values: tempdir
+                .read_public_values()
+                .map_err(|e| ZiskError::Prove(ProveError::TempDir(e)))?,
         };
         let bytes = bincode::serialize(&proof_with_public_values)
             .map_err(|err| ZiskError::Prove(ProveError::Bincode(err)))?;
@@ -168,28 +207,28 @@ impl zkVM for EreZisk {
     }
 
     fn verify(&self, bytes: &[u8]) -> Result<(), zkVMError> {
+        // Write proof and public values to file.
+
         let proof_with_public_values: ZiskProofWithPublicValues = bincode::deserialize(bytes)
             .map_err(|err| ZiskError::Verify(VerifyError::Bincode(err)))?;
 
-        let output_dir = tempdir().map_err(|e| ZiskError::Verify(VerifyError::Io(e)))?;
-        let proof_path = proof_path(output_dir.path());
-        let public_values_path = public_values_path(output_dir.path());
-        fs::create_dir_all(proof_dir(output_dir.path()))
-            .map_err(|e| ZiskError::Verify(VerifyError::Io(e)))?;
+        let mut tempdir =
+            ZiskTempDir::new().map_err(|e| ZiskError::Verify(VerifyError::TempDir(e)))?;
+        tempdir
+            .write_proof(&proof_with_public_values.proof)
+            .map_err(|e| ZiskError::Verify(VerifyError::TempDir(e)))?;
+        tempdir
+            .write_public_values(&proof_with_public_values.public_values)
+            .map_err(|e| ZiskError::Verify(VerifyError::TempDir(e)))?;
 
-        fs::File::create(&proof_path)
-            .and_then(|mut file| file.write_all(&proof_with_public_values.proof))
-            .map_err(|e| ZiskError::Verify(VerifyError::Io(e)))?;
-        fs::File::create(&public_values_path)
-            .and_then(|mut file| file.write_all(&proof_with_public_values.public_values))
-            .map_err(|e| ZiskError::Verify(VerifyError::Io(e)))?;
+        // Verify.
 
         let output = Command::new("cargo-zisk")
             .arg("verify")
-            .arg("-p")
-            .arg(&proof_path)
-            .arg("-u")
-            .arg(&public_values_path)
+            .arg("--proof")
+            .arg(tempdir.proof_path())
+            .arg("--public-inputs")
+            .arg(tempdir.public_values_path())
             .output()
             .map_err(|e| ZiskError::Verify(VerifyError::CargoZiskVerify { source: e }))?;
 
@@ -204,27 +243,93 @@ impl zkVM for EreZisk {
     }
 }
 
-fn input_path(dir: impl AsRef<Path>) -> PathBuf {
-    dir.as_ref().join("input.bin")
+struct ZiskTempDir {
+    tempdir: TempDir,
+    elf_hash: Option<String>,
 }
 
-fn proof_dir(dir: impl AsRef<Path>) -> PathBuf {
-    dir.as_ref().join("proofs")
-}
+impl ZiskTempDir {
+    fn new() -> io::Result<Self> {
+        let tempdir = Self {
+            tempdir: tempdir()?,
+            elf_hash: None,
+        };
+        fs::create_dir(tempdir.rom_dir_path())?;
+        fs::create_dir_all(tempdir.proof_dir_path())?;
+        Ok(tempdir)
+    }
 
-fn proof_path(dir: impl AsRef<Path>) -> PathBuf {
-    proof_dir(dir).join("vadcop_final_proof.json")
-}
+    fn write_elf(&mut self, elf: &[u8]) -> io::Result<()> {
+        self.elf_hash = Some(blake3::hash(elf).to_hex().to_string());
+        fs::write(self.elf_path(), elf)
+    }
 
-fn public_values_path(dir: impl AsRef<Path>) -> PathBuf {
-    dir.as_ref().join("publics.json")
+    fn write_input(&mut self, input: &[u8]) -> io::Result<()> {
+        fs::File::create(self.input_path()).and_then(|mut file| file.write_all(input))
+    }
+
+    fn read_proof(&self) -> io::Result<Vec<u8>> {
+        fs::read(self.proof_path())
+    }
+
+    fn write_proof(&mut self, proof: &[u8]) -> io::Result<()> {
+        fs::File::create(self.proof_path()).and_then(|mut file| file.write_all(proof))
+    }
+
+    fn read_public_values(&self) -> io::Result<Vec<u8>> {
+        fs::read(self.public_values_path())
+    }
+
+    fn write_public_values(&mut self, public_values: &[u8]) -> io::Result<()> {
+        fs::File::create(self.public_values_path())
+            .and_then(|mut file| file.write_all(public_values))
+    }
+
+    fn elf_path(&self) -> PathBuf {
+        self.tempdir.path().join("elf")
+    }
+
+    fn rom_dir_path(&self) -> PathBuf {
+        self.tempdir.path().join("rom")
+    }
+
+    fn asm_path(&self) -> PathBuf {
+        let elf_path = self.elf_path();
+        let stem = elf_path
+            .file_stem()
+            .expect("ELF file has name")
+            .to_str()
+            .expect("ELF file name is valid UTF-8");
+        let hash = self.elf_hash.as_deref().expect("setup has been called");
+        self.rom_dir_path().join(format!("{stem}-{hash}-mt.bin"))
+    }
+
+    fn input_path(&self) -> PathBuf {
+        self.tempdir.path().join("input.bin")
+    }
+
+    fn output_dir_path(&self) -> PathBuf {
+        self.tempdir.path().join("output")
+    }
+
+    fn public_values_path(&self) -> PathBuf {
+        self.output_dir_path().join("publics.json")
+    }
+
+    fn proof_dir_path(&self) -> PathBuf {
+        self.output_dir_path().join("proofs")
+    }
+
+    fn proof_path(&self) -> PathBuf {
+        self.proof_dir_path().join("vadcop_final_proof.json")
+    }
 }
 
 #[cfg(test)]
 mod execute_tests {
     use super::*;
 
-    fn get_compiled_test_zisk_elf() -> Result<PathBuf, ZiskError> {
+    fn get_compiled_test_zisk_elf() -> Result<Vec<u8>, ZiskError> {
         let test_guest_path = get_execute_test_guest_program_path();
         RV64_IMA_ZISK_ZKVM_ELF::compile(&test_guest_path)
     }
@@ -290,7 +395,7 @@ mod prove_tests {
             .expect("Failed to find or canonicalize test guest program at <CARGO_WORKSPACE_DIR>/tests/execute/zisk")
     }
 
-    fn get_compiled_test_zisk_elf_for_prove() -> Result<PathBuf, ZiskError> {
+    fn get_compiled_test_zisk_elf_for_prove() -> Result<Vec<u8>, ZiskError> {
         let test_guest_path = get_prove_test_guest_program_path();
         RV64_IMA_ZISK_ZKVM_ELF::compile(&test_guest_path)
     }

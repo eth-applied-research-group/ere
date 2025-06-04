@@ -2635,6 +2635,7 @@ name = "ere-zisk"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "blake3",
  "serde",
  "tempfile",
  "thiserror 2.0.12",
