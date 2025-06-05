@@ -1,14 +1,13 @@
 use crate::error::CompileError;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{fs, path::Path, process::Command};
+use tempfile::TempDir;
 use toml::Value as TomlValue;
 use tracing::info;
 
+const ZISK_TARGET: &str = "riscv64ima-zisk-zkvm-elf";
+
 /// Compile the guest crate and return raw ELF bytes.
-pub fn compile_zisk_program(program_crate_path: &Path) -> Result<PathBuf, CompileError> {
+pub fn compile_zisk_program(program_crate_path: &Path) -> Result<Vec<u8>, CompileError> {
     info!("Compiling ZisK program at {}", program_crate_path.display());
 
     if !program_crate_path.exists() || !program_crate_path.is_dir() {
@@ -51,9 +50,21 @@ pub fn compile_zisk_program(program_crate_path: &Path) -> Result<PathBuf, Compil
     info!("Parsed program name: {program_name}");
 
     // ── build ─────────────────────────────────────────────────────────────
-    let status = Command::new("cargo-zisk")
+    let temp_output_dir = TempDir::new_in(program_crate_path)?;
+
+    // Inlining `cargo-zisk build --release` because it doesn't support setting
+    // `--target-dir`.
+    let status = Command::new("cargo")
         .current_dir(program_crate_path)
-        .args(["build", "--release"])
+        .args([
+            "+zisk",
+            "build",
+            "--release",
+            "--target",
+            ZISK_TARGET,
+            "--target-dir",
+        ])
+        .arg(temp_output_dir.path())
         .status()
         .map_err(|e| CompileError::CargoZiskBuild {
             cwd: program_crate_path.to_path_buf(),
@@ -67,38 +78,17 @@ pub fn compile_zisk_program(program_crate_path: &Path) -> Result<PathBuf, Compil
         });
     }
 
-    let elf_path = program_crate_path
-        .join("target")
+    let elf_path = temp_output_dir
+        .path()
         .join("riscv64ima-zisk-zkvm-elf")
         .join("release")
         .join(program_name);
-    let elf_path = elf_path
-        .canonicalize()
-        .map_err(|e| CompileError::ElfNotFound {
-            path: elf_path,
-            source: e,
-        })?;
+    let elf_bytes = fs::read(&elf_path).map_err(|e| CompileError::ReadFile {
+        path: elf_path.clone(),
+        source: e,
+    })?;
 
-    // FIXME: This currently uses global build directory `${HOME}/.zisk/zisk/emulator-asm`
-    //        which causes `compile_zisk_program` to panic if ran in parallel.
-    //        We should create a temporary directory and copy only necessary
-    //        data to setup each ELF.
-    let status = Command::new("cargo-zisk")
-        .current_dir(program_crate_path)
-        .arg("rom-setup")
-        .arg("-e")
-        .arg(&elf_path)
-        .status()
-        .map_err(|e| CompileError::CargoZiskRomSetup { source: e })?;
-
-    if !status.success() {
-        return Err(CompileError::CargoZiskRomSetupFailed {
-            status,
-            path: program_crate_path.to_path_buf(),
-        });
-    }
-
-    Ok(elf_path)
+    Ok(elf_bytes)
 }
 
 #[cfg(test)]
@@ -128,11 +118,8 @@ mod tests {
         let test_guest_path = get_compile_test_guest_program_path();
 
         match compile_zisk_program(&test_guest_path) {
-            Ok(elf_path) => {
-                assert!(
-                    fs::metadata(elf_path).unwrap().len() != 0,
-                    "ELF bytes should not be empty."
-                );
+            Ok(elf_bytes) => {
+                assert!(!elf_bytes.is_empty(), "ELF bytes should not be empty.");
             }
             Err(e) => {
                 panic!("compile failed for dedicated guest: {e:?}");
@@ -144,11 +131,8 @@ mod tests {
     fn test_compile_trait() {
         let test_guest_path = get_compile_test_guest_program_path();
         match RV64_IMA_ZISK_ZKVM_ELF::compile(&test_guest_path) {
-            Ok(elf_path) => {
-                assert!(
-                    fs::metadata(elf_path).unwrap().len() != 0,
-                    "ELF bytes should not be empty."
-                );
+            Ok(elf_bytes) => {
+                assert!(!elf_bytes.is_empty(), "ELF bytes should not be empty.");
             }
             Err(e) => {
                 panic!("compile_zisk_program direct call failed for dedicated guest: {e:?}");
