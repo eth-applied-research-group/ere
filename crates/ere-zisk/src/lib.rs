@@ -25,7 +25,6 @@ pub struct RV64_IMA_ZISK_ZKVM_ELF;
 impl Compiler for RV64_IMA_ZISK_ZKVM_ELF {
     type Error = ZiskError;
 
-    /// Path to compiled ELF.
     type Program = Vec<u8>;
 
     fn compile(path_to_program: &Path) -> Result<Self::Program, Self::Error> {
@@ -347,7 +346,7 @@ mod execute_tests {
 
     #[test]
     fn test_execute_zisk_dummy_input() {
-        let elf_path = get_compiled_test_zisk_elf()
+        let elf_bytes = get_compiled_test_zisk_elf()
             .expect("Failed to compile test ZisK guest for execution test");
 
         let mut input_builder = Input::new();
@@ -356,7 +355,7 @@ mod execute_tests {
         input_builder.write(n);
         input_builder.write(a);
 
-        let zkvm = EreZisk::new(elf_path, ProverResourceType::Cpu);
+        let zkvm = EreZisk::new(elf_bytes, ProverResourceType::Cpu);
 
         let result = zkvm.execute(&input_builder);
 
@@ -367,12 +366,12 @@ mod execute_tests {
 
     #[test]
     fn test_execute_zisk_no_input_for_guest_expecting_input() {
-        let elf_path = get_compiled_test_zisk_elf()
+        let elf_bytes = get_compiled_test_zisk_elf()
             .expect("Failed to compile test ZisK guest for execution test");
 
         let empty_input = Input::new();
 
-        let zkvm = EreZisk::new(elf_path, ProverResourceType::Cpu);
+        let zkvm = EreZisk::new(elf_bytes, ProverResourceType::Cpu);
         assert!(zkvm.execute(&empty_input).is_err());
     }
 }
