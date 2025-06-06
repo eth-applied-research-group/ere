@@ -28,24 +28,48 @@ ensure_tool_installed() {
     fi
 } 
 
-echo "Installing Risc0 Toolchain from git revision to match project dependencies..."
+echo "Installing Risc0 Toolchain using rzup (latest release versions)..."
 
-ensure_tool_installed "cargo" "to install Risc0 tools from git"
-ensure_tool_installed "git" "to clone the Risc0 repository"
+ensure_tool_installed "curl" "to download the rzup installer"
+ensure_tool_installed "bash" "as the rzup installer script uses bash"
 
-# Define the git revision that matches what's used in the project
-# This ensures r0vm version matches the risc0-zkvm crate version used in Cargo.toml
-RISC0_GIT_REV="352dea62857ba57331053cd0986a12c1a4708732"
+# Install rzup itself if not already present
+if ! is_tool_installed "rzup"; then
+    echo "Attempting to install rzup..."
+    # The rzup installer (risczero.com/install) installs rzup to $HOME/.risc0/bin
+    # and should modify shell profiles like .bashrc to add it to PATH.
+    curl -L https://risczero.com/install | bash
 
-echo "Installing cargo-risczero from git revision ${RISC0_GIT_REV}..."
-echo "This will install both cargo-risczero and r0vm executables..."
-cargo install --git https://github.com/risc0/risc0.git --rev ${RISC0_GIT_REV} --force cargo-risczero
+    # For the current script's execution, we need to add the rzup path explicitly
+    # as the .bashrc changes won't affect this running script instance.
+    RZUP_BIN_DIR="${HOME}/.risc0/bin"
+    if [ -d "${RZUP_BIN_DIR}" ] && [[ ":$PATH:" != *":${RZUP_BIN_DIR}:"* ]]; then
+        echo "Adding ${RZUP_BIN_DIR} to PATH for current script session."
+        export PATH="${RZUP_BIN_DIR}:$PATH"
+    fi
+
+    # Re-check if rzup is now in PATH
+    if ! is_tool_installed "rzup"; then
+        echo "Error: rzup command not found after installation attempt." >&2
+        echo "       Please check if ${RZUP_BIN_DIR} was created and if it's in your PATH for new shells." >&2
+        echo "       You might need to source your ~/.bashrc or similar shell profile." >&2
+        exit 1
+    fi
+    echo "rzup installed successfully and added to PATH for this session."
+else
+    echo "rzup already installed and in PATH."
+fi
+
+# Now that rzup is confirmed to be in PATH for this script, install the Risc0 toolchain
+echo "Running 'rzup install' to install/update Risc0 toolchain..."
+rzup install
 
 # Verify Risc0 installation
 echo "Verifying Risc0 installation..."
+ensure_tool_installed "cargo" "as cargo-risczero needs it"
 cargo risczero --version || (echo "Error: cargo risczero command failed!" >&2 && exit 1)
-r0vm --version || (echo "Error: r0vm command failed!" >&2 && exit 1)
 
-echo "Risc0 Toolchain installation from git revision ${RISC0_GIT_REV} successful."
-echo "Both cargo-risczero and r0vm have been installed from the same git revision"
-echo "to ensure compatibility with the risc0-zkvm crate used in this project." 
+echo "Risc0 Toolchain installation (latest release) successful."
+echo "The rzup installer might have updated your shell configuration files (e.g., ~/.bashrc, ~/.zshrc)."
+echo "To ensure rzup and Risc0 tools are available in your current shell session if this was a new installation,"
+echo "you may need to source your shell profile (e.g., 'source ~/.bashrc') or open a new terminal." 
