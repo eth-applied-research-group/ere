@@ -40,6 +40,9 @@ impl EreRisc0 {
                 #[cfg(not(any(feature = "cuda", feature = "metal")))]
                 panic!("GPU selected but neither 'cuda' nor 'metal' feature is enabled");
             }
+            ProverResourceType::Network(_) => {
+                panic!("Network proving not yet implemented for RISC Zero. Use CPU or GPU resource type.");
+            }
         }
 
         Self {

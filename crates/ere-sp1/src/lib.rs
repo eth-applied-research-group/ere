@@ -1,16 +1,18 @@
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
 
 use std::time::Instant;
+#[cfg(not(test))]
+use indexmap as _;
 
 use compile::compile_sp1_program;
 use sp1_sdk::{
-    CpuProver, CudaProver, Prover, ProverClient, SP1ProofWithPublicValues, SP1ProvingKey, SP1Stdin,
+    CpuProver, CudaProver, NetworkProver, Prover, ProverClient, SP1ProofWithPublicValues, SP1ProvingKey, SP1Stdin,
     SP1VerifyingKey,
 };
 use tracing::info;
 use zkvm_interface::{
-    Compiler, Input, InputItem, ProgramExecutionReport, ProgramProvingReport, ProverResourceType,
-    zkVM, zkVMError,
+    Compiler, Input, InputItem, NetworkProverConfig, ProgramExecutionReport, ProgramProvingReport, 
+    ProverResourceType, zkVM, zkVMError,
 };
 
 mod compile;
@@ -21,6 +23,7 @@ use error::{ExecuteError, ProveError, SP1Error, VerifyError};
 enum ProverType {
     Cpu(CpuProver),
     Gpu(CudaProver),
+    Network(NetworkProver),
 }
 
 impl ProverType {
@@ -31,6 +34,7 @@ impl ProverType {
         match self {
             ProverType::Cpu(cpu_prover) => cpu_prover.setup(program),
             ProverType::Gpu(cuda_prover) => cuda_prover.setup(program),
+            ProverType::Network(network_prover) => network_prover.setup(program),
         }
     }
 
@@ -42,6 +46,7 @@ impl ProverType {
         let cpu_executor_builder = match self {
             ProverType::Cpu(cpu_prover) => cpu_prover.execute(program, input),
             ProverType::Gpu(cuda_prover) => cuda_prover.execute(program, input),
+            ProverType::Network(network_prover) => network_prover.execute(program, input),
         };
 
         cpu_executor_builder
@@ -56,6 +61,7 @@ impl ProverType {
         match self {
             ProverType::Cpu(cpu_prover) => cpu_prover.prove(pk, input).core().run(),
             ProverType::Gpu(cuda_prover) => cuda_prover.prove(pk, input).core().run(),
+            ProverType::Network(network_prover) => network_prover.prove(pk, input).core().run(),
         }
         .map_err(|e| SP1Error::Prove(ProveError::Client(e.into())))
     }
@@ -68,6 +74,7 @@ impl ProverType {
         match self {
             ProverType::Cpu(cpu_prover) => cpu_prover.verify(proof, vk),
             ProverType::Gpu(cuda_prover) => cuda_prover.verify(proof, vk),
+            ProverType::Network(network_prover) => network_prover.verify(proof, vk),
         }
         .map_err(|e| SP1Error::Verify(VerifyError::Client(e.into())))
     }
@@ -96,6 +103,29 @@ impl Compiler for RV32_IM_SUCCINCT_ZKVM_ELF {
 }
 
 impl EreSP1 {
+    fn create_network_prover(config: &NetworkProverConfig) -> NetworkProver {
+        let mut builder = ProverClient::builder().network();
+        
+        // Check if we have a private key in the config or environment
+        if let Some(api_key) = &config.api_key {
+            builder = builder.private_key(api_key);
+        } else if let Ok(private_key) = std::env::var("NETWORK_PRIVATE_KEY") {
+            builder = builder.private_key(&private_key);
+        } else {
+            panic!("Network proving requires a private key. Set NETWORK_PRIVATE_KEY environment variable or provide api_key in NetworkProverConfig");
+        }
+        
+        // Set the RPC URL if provided
+        if !config.endpoint.is_empty() {
+            builder = builder.rpc_url(&config.endpoint);
+        } else if let Ok(rpc_url) = std::env::var("NETWORK_RPC_URL") {
+            builder = builder.rpc_url(&rpc_url);
+        }
+        // Otherwise SP1 SDK will use its default RPC URL
+        
+        builder.build()
+    }
+
     pub fn new(
         program: <RV32_IM_SUCCINCT_ZKVM_ELF as Compiler>::Program,
         resource: ProverResourceType,
@@ -103,6 +133,9 @@ impl EreSP1 {
         let client = match resource {
             ProverResourceType::Cpu => ProverType::Cpu(ProverClient::builder().cpu().build()),
             ProverResourceType::Gpu => ProverType::Gpu(ProverClient::builder().cuda().build()),
+            ProverResourceType::Network(config) => {
+                ProverType::Network(Self::create_network_prover(&config))
+            }
         };
         let (pk, vk) = client.setup(&program);
 
