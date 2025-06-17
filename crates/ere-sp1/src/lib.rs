@@ -1,17 +1,17 @@
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
 
-use std::time::Instant;
 #[cfg(not(test))]
 use indexmap as _;
+use std::time::Instant;
 
 use compile::compile_sp1_program;
 use sp1_sdk::{
-    CpuProver, CudaProver, NetworkProver, Prover, ProverClient, SP1ProofWithPublicValues, SP1ProvingKey, SP1Stdin,
-    SP1VerifyingKey,
+    CpuProver, CudaProver, NetworkProver, Prover, ProverClient, SP1ProofWithPublicValues,
+    SP1ProvingKey, SP1Stdin, SP1VerifyingKey,
 };
 use tracing::info;
 use zkvm_interface::{
-    Compiler, Input, InputItem, NetworkProverConfig, ProgramExecutionReport, ProgramProvingReport, 
+    Compiler, Input, InputItem, NetworkProverConfig, ProgramExecutionReport, ProgramProvingReport,
     ProverResourceType, zkVM, zkVMError,
 };
 
@@ -105,16 +105,16 @@ impl Compiler for RV32_IM_SUCCINCT_ZKVM_ELF {
 impl EreSP1 {
     fn create_network_prover(config: &NetworkProverConfig) -> NetworkProver {
         let mut builder = ProverClient::builder().network();
-        
         // Check if we have a private key in the config or environment
         if let Some(api_key) = &config.api_key {
             builder = builder.private_key(api_key);
         } else if let Ok(private_key) = std::env::var("NETWORK_PRIVATE_KEY") {
             builder = builder.private_key(&private_key);
         } else {
-            panic!("Network proving requires a private key. Set NETWORK_PRIVATE_KEY environment variable or provide api_key in NetworkProverConfig");
+            panic!(
+                "Network proving requires a private key. Set NETWORK_PRIVATE_KEY environment variable or provide api_key in NetworkProverConfig"
+            );
         }
-        
         // Set the RPC URL if provided
         if !config.endpoint.is_empty() {
             builder = builder.rpc_url(&config.endpoint);
@@ -122,7 +122,6 @@ impl EreSP1 {
             builder = builder.rpc_url(&rpc_url);
         }
         // Otherwise SP1 SDK will use its default RPC URL
-        
         builder.build()
     }
 
@@ -325,5 +324,56 @@ mod prove_tests {
         let zkvm = EreSP1::new(elf_bytes, ProverResourceType::Cpu);
         let prove_result = zkvm.prove(&empty_input);
         assert!(prove_result.is_err())
+    }
+
+    #[test]
+    #[ignore = "Requires NETWORK_PRIVATE_KEY environment variable to be set"]
+    fn test_prove_sp1_network() {
+        // Check if we have the required environment variable
+        if std::env::var("NETWORK_PRIVATE_KEY").is_err() {
+            eprintln!("Skipping network test: NETWORK_PRIVATE_KEY not set");
+            return;
+        }
+
+        let elf_bytes = get_compiled_test_sp1_elf_for_prove()
+            .expect("Failed to compile test SP1 guest for proving test");
+
+        let mut input_builder = Input::new();
+        let n: u32 = 42;
+        let a: u16 = 42;
+        input_builder.write(n);
+        input_builder.write(a);
+
+        // Create a network prover configuration
+        let network_config = NetworkProverConfig {
+            endpoint: std::env::var("NETWORK_RPC_URL").unwrap_or_default(),
+            api_key: std::env::var("NETWORK_PRIVATE_KEY").ok(),
+            timeout: std::time::Duration::from_secs(300),
+            retry_policy: zkvm_interface::RetryPolicy::default(),
+            fallback_to_local: false,
+        };
+
+        let zkvm = EreSP1::new(elf_bytes, ProverResourceType::Network(network_config));
+
+        // Execute first to ensure the program works
+        let exec_result = zkvm.execute(&input_builder);
+        assert!(exec_result.is_ok(), "Execution should succeed");
+
+        // Now prove using the network
+        let proof_bytes = match zkvm.prove(&input_builder) {
+            Ok((prove_result, report)) => {
+                println!("Network proving completed in {:?}", report.proving_time);
+                prove_result
+            }
+            Err(err) => {
+                panic!("Network proving error: {:?}", err);
+            }
+        };
+
+        assert!(!proof_bytes.is_empty(), "Proof bytes should not be empty.");
+
+        // Verify the proof
+        let verify_result = zkvm.verify(&proof_bytes);
+        assert!(verify_result.is_ok(), "Verification should succeed");
     }
 }

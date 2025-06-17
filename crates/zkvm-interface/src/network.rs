@@ -6,17 +6,17 @@ use std::time::Duration;
 pub struct NetworkProverConfig {
     /// The endpoint URL of the prover network service
     pub endpoint: String,
-    
+
     /// Optional API key for authentication
     pub api_key: Option<String>,
-    
+
     /// Request timeout duration
     #[serde(with = "humantime_serde")]
     pub timeout: Duration,
-    
+
     /// Retry policy for handling network failures
     pub retry_policy: RetryPolicy,
-    
+
     /// Whether to fallback to local proving if network fails
     pub fallback_to_local: bool,
 }
@@ -38,15 +38,15 @@ impl Default for NetworkProverConfig {
 pub struct RetryPolicy {
     /// Maximum number of retry attempts
     pub max_retries: u32,
-    
+
     /// Initial backoff duration
     #[serde(with = "humantime_serde")]
     pub initial_backoff: Duration,
-    
+
     /// Maximum backoff duration
     #[serde(with = "humantime_serde")]
     pub max_backoff: Duration,
-    
+
     /// Backoff multiplier for exponential backoff
     pub backoff_multiplier: f64,
 }
@@ -67,10 +67,10 @@ impl Default for RetryPolicy {
 pub struct ProverNetworkRequest {
     /// The program to prove (serialized)
     pub program: Vec<u8>,
-    
+
     /// The inputs for the program (serialized)
     pub inputs: Vec<u8>,
-    
+
     /// Optional metadata about the proving request
     pub metadata: Option<RequestMetadata>,
 }
@@ -80,10 +80,10 @@ pub struct ProverNetworkRequest {
 pub struct RequestMetadata {
     /// Unique identifier for this request
     pub request_id: String,
-    
+
     /// Priority level for the request
     pub priority: RequestPriority,
-    
+
     /// Optional callback URL for async completion
     pub callback_url: Option<String>,
 }
@@ -108,7 +108,7 @@ impl Default for RequestPriority {
 pub struct ProverNetworkResponse {
     /// The generated proof
     pub proof: Vec<u8>,
-    
+
     /// Proving statistics
     pub stats: ProvingStats,
 }
@@ -119,18 +119,18 @@ pub struct ProvingStats {
     /// Total proving time
     #[serde(with = "humantime_serde")]
     pub proving_time: Duration,
-    
+
     /// Queue wait time
     #[serde(with = "humantime_serde")]
     pub queue_time: Duration,
-    
+
     /// Actual computation time
     #[serde(with = "humantime_serde")]
     pub compute_time: Duration,
-    
+
     /// Number of cycles executed
     pub cycles: u64,
-    
+
     /// Prover node identifier
     pub prover_node: String,
 }
