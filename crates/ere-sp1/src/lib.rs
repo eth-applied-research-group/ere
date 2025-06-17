@@ -346,9 +346,6 @@ mod prove_tests {
         let network_config = NetworkProverConfig {
             endpoint: std::env::var("NETWORK_RPC_URL").unwrap_or_default(),
             api_key: std::env::var("NETWORK_PRIVATE_KEY").ok(),
-            timeout: std::time::Duration::from_secs(300),
-            retry_policy: zkvm_interface::RetryPolicy::default(),
-            fallback_to_local: false,
         };
 
         let zkvm = EreSP1::new(elf_bytes, ProverResourceType::Network(network_config));

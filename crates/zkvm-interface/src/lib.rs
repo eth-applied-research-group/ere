@@ -8,7 +8,7 @@ mod reports;
 pub use reports::{ProgramExecutionReport, ProgramProvingReport};
 
 mod network;
-pub use network::{NetworkProverConfig, RetryPolicy, ProverNetworkRequest, ProverNetworkResponse};
+pub use network::NetworkProverConfig;
 
 #[allow(non_camel_case_types)]
 /// Compiler trait for compiling programs into an opaque sequence of bytes.
@@ -41,23 +41,23 @@ pub enum zkVMError {
     /// Network-related errors
     #[error("Network error: {0}")]
     Network(String),
-    
+
     /// Authentication error
     #[error("Authentication failed: {0}")]
     Authentication(String),
-    
+
     /// Timeout error
     #[error("Operation timed out after {0:?}")]
     Timeout(std::time::Duration),
-    
+
     /// Service unavailable
     #[error("Prover service unavailable: {0}")]
     ServiceUnavailable(String),
-    
+
     /// Invalid response from network
     #[error("Invalid response from prover network: {0}")]
     InvalidResponse(String),
-    
+
     // TODO: We can add more variants as time goes by.
     // TODO: for now, we use this catch-all as a way to prototype faster
     #[error(transparent)]
