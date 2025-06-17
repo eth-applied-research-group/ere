@@ -1,7 +1,5 @@
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
 
-#[cfg(not(test))]
-use indexmap as _;
 use std::time::Instant;
 
 use compile::compile_sp1_program;

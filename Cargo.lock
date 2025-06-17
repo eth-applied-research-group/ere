@@ -2621,7 +2621,6 @@ name = "ere-sp1"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "indexmap 2.9.0",
  "sp1-sdk",
  "tempfile",
  "thiserror 2.0.12",
