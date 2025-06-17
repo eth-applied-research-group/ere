@@ -62,9 +62,9 @@ fi
 
 # Now that rzup is confirmed to be in PATH for this script, install the Risc0 toolchain
 echo "Running 'rzup install' to install/update Risc0 toolchain..."
-# Install specific version 3.0.1-rc.1 to match project dependencies
-rzup install cargo-risczero 3.0.1-rc.1
-rzup install r0vm 3.0.1-rc.1
+# Install specific version v3.0.0-rc.1 to match project dependencies
+rzup install cargo-risczero v3.0.0-rc.1
+rzup install r0vm v3.0.0-rc.1
 
 # Verify Risc0 installation
 echo "Verifying Risc0 installation..."
