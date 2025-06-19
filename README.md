@@ -51,13 +51,18 @@
 
 ### 1. Install SDKs
 
+Trying to follow along with these instructions but using a particular Dockerfile...
+
+Use one of the included Dockerfiles, for example:
+
 ```bash
-bash scripts/sdk_installers/install_sp1_sdk.sh
-bash scripts/sdk_installers/install_jolt_sdk.sh
+docker build -f docker/base/Dockerfile.base -t ere-base docker/base
+docker build -f docker/zisk/Dockerfile -t ere-zisk .
 ```
 
 ### 2. Add Dependencies
 
+Put vim in the base image?
 ```toml
 # Cargo.toml
 [dependencies]
@@ -127,8 +132,20 @@ zkVMs evolve quickly; expect breaking changes. Although the API is generic, its 
 ## License
 
 Licensed under either of
-
+% docker build -f docker/base/Dockerfile.base -t ere-base docker/base
 * MIT license (LICENSE‑MIT or [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
 * Apache License, Version 2.0 (LICENSE‑APACHE or [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
 
 at your option.
+
+
+root@d2019a8c1a05:/workspace# cargo test --package ere-zisk --lib
+    Updating crates.io index
+    Updating git repository `https://github.com/openvm-org/openvm.git`
+    Updating git submodule `https://github.com/foundry-rs/forge-std`
+    Updating git submodule `https://github.com/riscv-software-src/riscv-tests.git`
+    Updating git submodule `https://github.com/riscv/riscv-test-env.git`
+    Updating git repository `https://github.com/openvm-org/stark-backend.git`
+    Updating git repository `https://github.com/brevis-network/pico`
+    Updating git repository `https://github.com/kevaundray/jolt`
+       Fetch [===========>             ]  50.31%, (4670/15039) resolving delta

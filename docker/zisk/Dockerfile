@@ -49,4 +49,16 @@ ENV PATH="${PATH}:${ZISK_BIN_DIR}"
 # Verify cargo-zisk is accessible
 RUN echo "Verifying Zisk installation in Dockerfile ..." && cargo-zisk --version
 
+## I guess we will move away from what's in the readme and just rely on Dockerfiles running comamnds like this?
+## (cf the SP1 Dockerfile)
+#
+# Copy the entire ere project context
+# The WORKDIR is /app from the base image
+WORKDIR /app
+COPY . .
+
+# Run tests
+RUN echo "Running tests for ere-zisk library..." && \
+    cargo test --release -p ere-zisk --lib -- --color always
+
 CMD ["/bin/bash"]
