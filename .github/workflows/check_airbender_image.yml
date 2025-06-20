@@ -28,6 +28,8 @@ jobs:
           rustup install nightly
           rustup component add --toolchain nightly rust-src
           rustup target add --toolchain nightly riscv32i-unknown-none-elf
+          # Also add for stable toolchain as dependencies might use it
+          rustup target add riscv32i-unknown-none-elf
 
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2

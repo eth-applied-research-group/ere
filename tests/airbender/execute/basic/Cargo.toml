@@ -6,7 +6,7 @@ edition = "2021"
 [workspace]
 
 [dependencies]
-riscv_common = { git = "https://github.com/matter-labs/zksync-airbender" }
+riscv_common = { git = "https://github.com/matter-labs/zksync-airbender", package = "riscv_common" }
 
 [profile.release]
 lto = true
