@@ -61,6 +61,8 @@ pub fn compile_airbender_program(program_crate_path: &Path) -> Result<Vec<u8>, C
             "+nightly",
             "build",
             "--release",
+            "--target",
+            "riscv32i-unknown-none-elf",
        ])
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
