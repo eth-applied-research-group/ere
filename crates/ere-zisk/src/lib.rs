@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     io::{self, Write},
+    os::unix::fs::symlink,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     time,
@@ -138,16 +139,14 @@ impl zkVM for EreZisk {
 
         // Setup ROM.
 
-        // FIXME: This currently uses global build directory `${HOME}/.zisk/zisk/emulator-asm`
-        //        which causes `compile_zisk_program` to panic if ran in parallel.
-        //        We should create a temporary directory and copy only necessary
-        //        data to setup each ELF.
         let status = Command::new("cargo-zisk")
             .arg("rom-setup")
             .arg("--elf")
             .arg(tempdir.elf_path())
             .arg("--output-dir")
             .arg(tempdir.rom_dir_path())
+            .arg("--zisk-path")
+            .arg(tempdir.zisk_dir_path())
             .status()
             .map_err(|e| ZiskError::Prove(ProveError::CargoZiskRomSetup { source: e }))?;
 
@@ -268,8 +267,41 @@ impl ZiskTempDir {
             tempdir: tempdir()?,
             elf_hash: None,
         };
+
         fs::create_dir(tempdir.rom_dir_path())?;
+        fs::create_dir(tempdir.zisk_dir_path())?;
         fs::create_dir_all(tempdir.proof_dir_path())?;
+
+        // Check the global zisk directory exists.
+        let home_dir = std::env::var("HOME").unwrap_or_default();
+        let global_zisk_dir_path = PathBuf::from(home_dir).join(".zisk").join("zisk");
+        if !global_zisk_dir_path.exists() {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!(
+                    "Global .zisk/zisk directory not found at: {}",
+                    global_zisk_dir_path.display()
+                ),
+            ));
+        }
+
+        // Symlink necessary files for `make` command of `cargo-zisk rom-setup`.
+        // The `Makefile` can be found https://github.com/0xPolygonHermez/zisk/blob/main/emulator-asm/Makefile.
+        let temp_zisk_dir_path = tempdir.zisk_dir_path();
+        fs::create_dir_all(temp_zisk_dir_path.join("emulator-asm").join("build"))?;
+        symlink(
+            global_zisk_dir_path.join("emulator-asm").join("Makefile"),
+            temp_zisk_dir_path.join("emulator-asm").join("Makefile"),
+        )?;
+        symlink(
+            global_zisk_dir_path.join("emulator-asm").join("src"),
+            temp_zisk_dir_path.join("emulator-asm").join("src"),
+        )?;
+        symlink(
+            global_zisk_dir_path.join("lib-c"),
+            temp_zisk_dir_path.join("lib-c"),
+        )?;
+
         Ok(tempdir)
     }
 
@@ -316,6 +348,10 @@ impl ZiskTempDir {
             .expect("ELF file name is valid UTF-8");
         let hash = self.elf_hash.as_deref().expect("setup has been called");
         self.rom_dir_path().join(format!("{stem}-{hash}-mt.bin"))
+    }
+
+    fn zisk_dir_path(&self) -> PathBuf {
+        self.tempdir.path().join("zisk")
     }
 
     fn input_path(&self) -> PathBuf {
