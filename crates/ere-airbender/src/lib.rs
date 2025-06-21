@@ -1,8 +1,6 @@
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
 
-use zkvm_interface::{
-    Compiler, zkVM, zkVMError,
-};
+use zkvm_interface::{Compiler, zkVM, zkVMError};
 
 mod compile;
 mod error;
@@ -23,11 +21,17 @@ impl Compiler for RV32_IM_SUCCINCT_ZKVM_ELF {
 pub struct EreAirbender;
 
 impl zkVM for EreAirbender {
-    fn execute(&self, _inputs: &zkvm_interface::Input) -> Result<zkvm_interface::ProgramExecutionReport, zkVMError> {
+    fn execute(
+        &self,
+        _inputs: &zkvm_interface::Input,
+    ) -> Result<zkvm_interface::ProgramExecutionReport, zkVMError> {
         unimplemented!("Airbender execution not yet implemented")
     }
 
-    fn prove(&self, _inputs: &zkvm_interface::Input) -> Result<(Vec<u8>, zkvm_interface::ProgramProvingReport), zkVMError> {
+    fn prove(
+        &self,
+        _inputs: &zkvm_interface::Input,
+    ) -> Result<(Vec<u8>, zkvm_interface::ProgramProvingReport), zkVMError> {
         unimplemented!("Airbender proving not yet implemented")
     }
 

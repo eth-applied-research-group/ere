@@ -5,10 +5,12 @@ use tracing::info;
 
 use crate::error::CompileError;
 
-
 /// Compile the guest crate and return raw ELF bytes.
 pub fn compile_airbender_program(program_crate_path: &Path) -> Result<Vec<u8>, CompileError> {
-    info!("Compiling Airbender program at {}", program_crate_path.display());
+    info!(
+        "Compiling Airbender program at {}",
+        program_crate_path.display()
+    );
 
     if !program_crate_path.exists() || !program_crate_path.is_dir() {
         return Err(CompileError::InvalidProgramPath(
@@ -63,7 +65,7 @@ pub fn compile_airbender_program(program_crate_path: &Path) -> Result<Vec<u8>, C
             "--release",
             "--target",
             "riscv32i-unknown-none-elf",
-       ])
+        ])
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
         .status()
@@ -85,7 +87,7 @@ pub fn compile_airbender_program(program_crate_path: &Path) -> Result<Vec<u8>, C
         .join("riscv32i-unknown-none-elf")
         .join("release")
         .join(program_name);
-        
+
     if !elf_path.exists() {
         return Err(CompileError::ElfNotFound(elf_path));
     }
