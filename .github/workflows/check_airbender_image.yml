@@ -1,49 +1,52 @@
-name: Check Airbender crate
+name: Check Airbender Docker Image
 
 on:
   push:
     branches:
       - master
+    paths:
+      - 'crates/ere-airbender/**'
+      - 'crates/zkvm-interface/**'
+      - 'docker/airbender/**'
+      - 'docker/base/**'
+      - 'scripts/sdk_installers/**'
+      - 'tests/airbender/**'
+      - '.github/workflows/check_airbender_image.yml'
   pull_request:
     branches:
       - master
+    paths:
+      - 'crates/ere-airbender/**'
+      - 'crates/zkvm-interface/**'
+      - 'docker/airbender/**'
+      - 'docker/base/**'
+      - 'scripts/sdk_installers/**'
+      - 'tests/airbender/**'
+      - '.github/workflows/check_airbender_image.yml'
   workflow_dispatch:
 
 jobs:
-  test_airbender_crate:
-    name: Build and Test Airbender Crate
+  build_airbender_image:
+    name: Build Airbender Docker Image
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Rust toolchain (stable)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Install nightly toolchain with RISC-V target
+      - name: Build dependent Docker base image
         run: |
-          rustup install nightly
-          rustup component add --toolchain nightly rust-src
-          rustup target add --toolchain nightly riscv32i-unknown-none-elf
-          # Also add for stable toolchain as dependencies might use it
-          rustup target add riscv32i-unknown-none-elf
+          docker build \
+            --file docker/base/Dockerfile.base \
+            --tag ere-base:latest \
+            .
 
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: airbender-deps
-
-      - name: Check ere-airbender
-        run: cargo check --package ere-airbender --verbose
-
-      - name: Test ere-airbender (compile tests only)
-        run: cargo test --package ere-airbender --lib --verbose
-
-      - name: Check formatting for ere-airbender
-        run: cargo fmt --package ere-airbender -- --check
-
-      - name: Run Clippy for ere-airbender
-        run: cargo clippy --package ere-airbender -- -D warnings
+      - name: Build Airbender Docker image
+        run: |
+          docker build \
+            --file docker/airbender/Dockerfile \
+            --tag ere-builder-airbender-check:latest \
+            .
