@@ -1,9 +1,14 @@
 use crate::error::CompileError;
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 use tempfile::TempDir;
 use toml::Value as TomlValue;
 use tracing::info;
 
+const ZISK_TOOLCHAIN: &str = "zisk";
 const ZISK_TARGET: &str = "riscv64ima-zisk-zkvm-elf";
 
 /// Compile the guest crate and return raw ELF bytes.
@@ -52,18 +57,28 @@ pub fn compile_zisk_program(program_crate_path: &Path) -> Result<Vec<u8>, Compil
     // ── build ─────────────────────────────────────────────────────────────
     let temp_output_dir = TempDir::new_in(program_crate_path)?;
 
+    // Get the path to ZisK toolchain's `rustc` so we could set the env
+    // `RUSTC=...` for `cargo` instead of using `cargo +zisk ...`.
+    let zisk_rustc = {
+        let output = Command::new("rustc")
+            .env("RUSTUP_TOOLCHAIN", ZISK_TOOLCHAIN)
+            .arg("--print")
+            .arg("sysroot")
+            .output()
+            .map_err(|e| CompileError::RustcSysroot { source: e })?;
+        PathBuf::from(String::from_utf8_lossy(&output.stdout).trim())
+            .join("bin")
+            .join("rustc")
+    };
+
     // Inlining `cargo-zisk build --release` because it doesn't support setting
-    // `--target-dir`.
+    // `--target-dir`. Note that we use `RUSTC=$ZISK_RUSTC cargo ...` instead of
+    // `cargo +zisk ...`.
     let status = Command::new("cargo")
         .current_dir(program_crate_path)
-        .args([
-            "+zisk",
-            "build",
-            "--release",
-            "--target",
-            ZISK_TARGET,
-            "--target-dir",
-        ])
+        .env("RUSTC", zisk_rustc)
+        .args(["build", "--release", "--target", ZISK_TARGET])
+        .arg("--target-dir")
         .arg(temp_output_dir.path())
         .status()
         .map_err(|e| CompileError::CargoZiskBuild {
