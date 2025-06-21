@@ -2566,6 +2566,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ere-airbender"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "hex",
+ "indexmap 2.9.0",
+ "tempfile",
+ "thiserror 2.0.12",
+ "toml",
+ "tracing",
+ "zkvm-interface",
+]
+
+[[package]]
 name = "ere-jolt"
 version = "0.1.0"
 dependencies = [

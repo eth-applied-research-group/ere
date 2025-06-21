@@ -1,0 +1,16 @@
+[package]
+name = "ere-test-airbender-guest"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+riscv_common = { git = "https://github.com/matter-labs/zksync-airbender", package = "riscv_common" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+opt-level = "z"
