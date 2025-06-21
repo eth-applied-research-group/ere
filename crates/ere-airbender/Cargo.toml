@@ -8,7 +8,6 @@ license.workspace = true
 [dependencies]
 zkvm-interface = { workspace = true }
 toml = "0.8"
-tempfile = "3.3"
 bincode = "1.3"
 thiserror = "2"
 tracing = "0.1"

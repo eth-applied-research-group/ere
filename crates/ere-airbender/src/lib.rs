@@ -13,7 +13,7 @@ impl Compiler for RV32_IM_SUCCINCT_ZKVM_ELF {
     type Program = Vec<u8>;
 
     fn compile(path_to_program: &std::path::Path) -> Result<Self::Program, Self::Error> {
-        compile::compile_airbender_program(path_to_program).map_err(|e| e.into())
+        compile::compile_airbender_program(path_to_program).map_err(Into::into)
     }
 }
 

@@ -2570,7 +2570,6 @@ name = "ere-airbender"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "tempfile",
  "thiserror 2.0.12",
  "toml",
  "tracing",
