@@ -41,7 +41,9 @@ impl EreRisc0 {
                 panic!("GPU selected but neither 'cuda' nor 'metal' feature is enabled");
             }
             ProverResourceType::Network(_) => {
-                panic!("Network proving not yet implemented for RISC Zero. Use CPU or GPU resource type.");
+                panic!(
+                    "Network proving not yet implemented for RISC Zero. Use CPU or GPU resource type."
+                );
             }
         }
 
