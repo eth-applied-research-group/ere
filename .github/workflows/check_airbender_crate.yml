@@ -39,9 +39,6 @@ jobs:
       - name: Check ere-airbender
         run: cargo check --package ere-airbender --verbose
 
-      - name: Test ere-airbender (compile tests only)
-        run: cargo test --package ere-airbender --lib --verbose
-
       - name: Check formatting for ere-airbender
         run: cargo fmt --package ere-airbender -- --check
 

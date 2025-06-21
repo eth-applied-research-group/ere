@@ -66,14 +66,29 @@ pub enum CompileError {
 
 #[derive(Debug, Error)]
 pub enum ExecuteError {
-    #[error("Airbender execution failed: {0}")]
-    Client(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Failed to run airbender-cli: {0}")]
+    CliCommand(std::io::Error),
+
+    #[error("Airbender CLI execution failed: {0}")]
+    CliFailed(String),
 }
 
 #[derive(Debug, Error)]
 pub enum ProveError {
-    #[error("Airbender SDK proving failed: {0}")]
-    Client(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Failed to run airbender-cli: {0}")]
+    CliCommand(std::io::Error),
+
+    #[error("Airbender CLI proving failed: {0}")]
+    CliFailed(String),
+
+    #[error("Failed to read proof from {0}: {1}")]
+    ReadProof(PathBuf, std::io::Error),
 
     #[error("Serialising proof with `bincode` failed: {0}")]
     Bincode(#[from] bincode::Error),
@@ -81,9 +96,15 @@ pub enum ProveError {
 
 #[derive(Debug, Error)]
 pub enum VerifyError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Failed to run airbender-cli: {0}")]
+    CliCommand(std::io::Error),
+
+    #[error("Airbender CLI verification failed: {0}")]
+    CliFailed(String),
+
     #[error("Deserialising proof failed: {0}")]
     Bincode(#[from] bincode::Error),
-
-    #[error("Airbender SDK verification failed: {0}")]
-    Client(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
