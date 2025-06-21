@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use compile::compile_risczero_program;
-use risc0_zkvm::{ExecutorEnv, Receipt, default_executor, default_prover};
+use risc0_zkvm::{ExecutorEnv, ProverOpts, Receipt, default_executor, default_prover};
 use zkvm_interface::{
     Compiler, Input, InputItem, ProgramExecutionReport, ProgramProvingReport, ProverResourceType,
     zkVM, zkVMError,
@@ -41,7 +41,9 @@ impl EreRisc0 {
                 panic!("GPU selected but neither 'cuda' nor 'metal' feature is enabled");
             }
             ProverResourceType::Network(_) => {
-                panic!("Network proving not yet implemented for RISC Zero. Use CPU or GPU resource type.");
+                panic!(
+                    "Network proving not yet implemented for RISC Zero. Use CPU or GPU resource type."
+                );
             }
         }
 
@@ -102,7 +104,7 @@ impl zkVM for EreRisc0 {
 
         let now = std::time::Instant::now();
         let prove_info = prover
-            .prove(env, &self.program.elf)
+            .prove_with_opts(env, &self.program.elf, &ProverOpts::succinct())
             .map_err(|err| zkVMError::Other(err.into()))?;
         let proving_time = now.elapsed();
 
