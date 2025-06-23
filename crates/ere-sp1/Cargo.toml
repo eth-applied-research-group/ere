@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
-sp1-sdk = "4.2.0"
+sp1-sdk = "5.0.5"
 zkvm-interface = { workspace = true }
 toml = "0.8"
 tempfile = "3.3"
