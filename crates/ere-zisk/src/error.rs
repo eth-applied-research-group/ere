@@ -61,13 +61,15 @@ pub enum CompileError {
         #[source]
         source: io::Error,
     },
-    #[error("Failed to execute `cargo-zisk build --release` in {cwd}: {source}")]
+    #[error("Failed to execute `RUSTC=$ZISK_RUSTC cargo build --release ...` in {cwd}: {source}")]
     CargoZiskBuild {
         cwd: PathBuf,
         #[source]
         source: io::Error,
     },
-    #[error("`cargo-zisk build --release` failed with status: {status} for program at {path}")]
+    #[error(
+        "`RUSTC=$ZISK_RUSTC cargo build --release ...` failed with status: {status} for program at {path}"
+    )]
     CargoZiskBuildFailed { status: ExitStatus, path: PathBuf },
 }
 
