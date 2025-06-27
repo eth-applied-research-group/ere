@@ -56,6 +56,11 @@ pub enum CompileError {
         #[source]
         source: toml::de::Error,
     },
+    #[error("Failed to execute `RUSTUP_TOOLCHAIN=zisk rustc --print sysroot`")]
+    RustcSysroot {
+        #[source]
+        source: io::Error,
+    },
     #[error("Failed to execute `cargo-zisk build --release` in {cwd}: {source}")]
     CargoZiskBuild {
         cwd: PathBuf,
