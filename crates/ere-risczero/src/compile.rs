@@ -3,6 +3,7 @@ use file_utils::FileRestorer;
 use risc0_zkvm::Digest;
 
 use crate::error::CompileError;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::{
     fs,
@@ -10,7 +11,7 @@ use std::{
     process::Command,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Risc0Program {
     // TODO: Seems like the risc0 compilation is also compiling
     // TODO: the analogous prover and verifying key
