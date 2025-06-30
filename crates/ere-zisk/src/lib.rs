@@ -187,7 +187,9 @@ impl zkVM for EreZisk {
                 unimplemented!()
             }
             ProverResourceType::Network(_) => {
-                panic!("Network proving not yet implemented for ZisK. Use CPU or GPU resource type.");
+                panic!(
+                    "Network proving not yet implemented for ZisK. Use CPU or GPU resource type."
+                );
             }
         }
         let proving_time = start.elapsed();
