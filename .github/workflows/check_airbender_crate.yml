@@ -1,0 +1,46 @@
+name: Check Airbender crate
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  test_airbender_crate:
+    name: Build and Test Airbender Crate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Install nightly toolchain with RISC-V target
+        run: |
+          rustup install nightly
+          rustup component add --toolchain nightly rust-src
+          rustup target add --toolchain nightly riscv32i-unknown-none-elf
+          # Also add for stable toolchain as dependencies might use it
+          rustup target add riscv32i-unknown-none-elf
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: airbender-deps
+
+      - name: Check ere-airbender
+        run: cargo check --package ere-airbender --verbose
+
+      - name: Check formatting for ere-airbender
+        run: cargo fmt --package ere-airbender -- --check
+
+      - name: Run Clippy for ere-airbender
+        run: cargo clippy --package ere-airbender -- -D warnings
