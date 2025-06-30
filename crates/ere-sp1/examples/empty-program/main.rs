@@ -4,8 +4,6 @@ use ere_succinct::{EreSP1, RV32_IM_SUCCINCT_ZKVM_ELF};
 use zkvm_interface::{Compiler, Input, ProverResourceType, zkVM};
 
 fn main() {
-    // TODO/temp: use clap -- we need to not rely on Rust-examples and be its own example crate at
-    // the workspace level.
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         eprintln!("Usage: {} [--cpu || --gpu]", args[0]);
@@ -27,7 +25,6 @@ fn main() {
             .join("empty")
             .canonicalize()
             .expect("Failed to find or canonicalize test guest program at <CARGO_WORKSPACE_DIR>/tests/prove/sp1");
-
     let elf_bytes = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&test_guest_path)
         .expect("Failed to compile test SP1 guest for execution test");
 
