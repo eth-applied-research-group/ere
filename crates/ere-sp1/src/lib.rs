@@ -57,11 +57,9 @@ impl ProverType {
         input: &SP1Stdin,
     ) -> Result<SP1ProofWithPublicValues, SP1Error> {
         match self {
-            ProverType::Cpu(cpu_prover) => cpu_prover.prove(pk, input).compressed().run(),
-            ProverType::Gpu(cuda_prover) => cuda_prover.prove(pk, input).compressed().run(),
-            ProverType::Network(network_prover) => {
-                network_prover.prove(pk, input).compressed().run()
-            }
+            ProverType::Cpu(cpu_prover) => cpu_prover.prove(pk, input).core().run(),
+            ProverType::Gpu(cuda_prover) => cuda_prover.prove(pk, input).core().run(),
+            ProverType::Network(network_prover) => network_prover.prove(pk, input).core().run(),
         }
         .map_err(|e| SP1Error::Prove(ProveError::Client(e.into())))
     }
