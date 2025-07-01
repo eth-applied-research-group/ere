@@ -1,0 +1,197 @@
+use std::path::PathBuf;
+use std::time::Instant;
+
+use nexus_sdk::compile::cargo::CargoPackager;
+use nexus_sdk::compile::{Compile, Compiler as NexusCompiler};
+use nexus_sdk::stwo::seq::{Proof, Stwo};
+use nexus_sdk::{Local, Prover, Verifiable};
+use tracing::info;
+use zkvm_interface::{
+    Compiler, Input, ProgramExecutionReport, ProgramProvingReport, ProverResourceType, zkVM,
+    zkVMError,
+};
+
+mod error;
+use crate::error::ProveError;
+use error::{CompileError, NexusError, VerifyError};
+
+/// NOTE: nexus's guest package name must be "ere-nexus-guest"
+/// TODO: This should be configurable in the future, but for now we hardcode it.
+const PACKAGE: &str = "ere-nexus-guest";
+
+#[allow(non_camel_case_types)]
+pub struct NEXUS_TARGET;
+
+impl Compiler for NEXUS_TARGET {
+    type Error = NexusError;
+
+    type Program = PathBuf;
+
+    fn compile(_: &std::path::Path) -> Result<Self::Program, Self::Error> {
+        let mut prover_compiler = NexusCompiler::<CargoPackager>::new(PACKAGE);
+        let elf_path = prover_compiler
+            .build()
+            .map_err(|e| CompileError::Client(e.into()))?;
+
+        Ok(elf_path)
+    }
+}
+
+pub struct EreNexus {
+    program: <NEXUS_TARGET as Compiler>::Program,
+}
+
+impl EreNexus {
+    pub fn new(
+        program: <NEXUS_TARGET as Compiler>::Program,
+        _resource_type: ProverResourceType,
+    ) -> Self {
+        Self { program }
+    }
+}
+impl zkVM for EreNexus {
+    fn execute(&self, inputs: &Input) -> Result<zkvm_interface::ProgramExecutionReport, zkVMError> {
+        let start = Instant::now();
+        // let private_input =  vec![] ;
+        let mut public_input = vec![];
+        for input in inputs.iter() {
+            public_input.extend(
+                input
+                    .as_bytes()
+                    .map_err(|e| NexusError::Prove(ProveError::Client(e.into())))
+                    .map_err(zkVMError::from)?,
+            );
+        }
+
+        Ok(ProgramExecutionReport {
+            execution_duration: start.elapsed(),
+            ..Default::default()
+        })
+    }
+
+    fn prove(
+        &self,
+        inputs: &Input,
+    ) -> Result<(Vec<u8>, zkvm_interface::ProgramProvingReport), zkVMError> {
+        let prover: Stwo<Local> = Stwo::new_from_file(&self.program.to_string_lossy().to_string())
+            .map_err(|e| NexusError::Prove(ProveError::Client(e.into())))
+            .map_err(zkVMError::from)?;
+
+        // let private_input =  vec![] ;
+        let mut public_input = vec![];
+        for input in inputs.iter() {
+            public_input.extend(
+                input
+                    .as_bytes()
+                    .map_err(|e| NexusError::Prove(ProveError::Client(e.into())))
+                    .map_err(zkVMError::from)?,
+            );
+        }
+
+        let now = std::time::Instant::now();
+        let (view, proof) = prover
+            .prove_with_input(&(), &public_input)
+            .map_err(|e| NexusError::Prove(ProveError::Client(e.into())))
+            .map_err(zkVMError::from)?;
+        let elapsed = now.elapsed();
+
+        let bytes = bincode::serialize(&proof)
+            .map_err(|err| NexusError::Prove(ProveError::Bincode(err)))?;
+
+        Ok((bytes, ProgramProvingReport::new(elapsed)))
+    }
+
+    fn verify(&self, mut proof: &[u8]) -> Result<(), zkVMError> {
+        info!("Verifying proof…");
+
+        let proof: Proof = bincode::deserialize(proof)
+            .map_err(|err| NexusError::Verify(VerifyError::Bincode(err)))?;
+
+        let prover: Stwo<Local> = Stwo::new_from_file(&self.program.to_string_lossy().to_string())
+            .map_err(|e| NexusError::Prove(ProveError::Client(e.into())))
+            .map_err(zkVMError::from)?;
+        let elf = prover.elf.clone(); // save elf for use with verification
+        #[rustfmt::skip]
+        proof
+        .verify_expected::<(), ()>(
+            &(),  // no public input
+            nexus_sdk::KnownExitCodes::ExitSuccess as u32,
+            &(),  // no public output
+            &elf, // expected elf (program binary)
+            &[],  // no associated data,
+        )
+            .map_err(|e| NexusError::Verify(VerifyError::Client(e.into())))
+    .map_err(zkVMError::from);
+
+        info!("Verify Succeeded!");
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use zkvm_interface::Compiler;
+
+    use crate::NEXUS_TARGET;
+
+    use super::*;
+    use std::path::PathBuf;
+
+    fn get_test_guest_program_path() -> PathBuf {
+        let workspace_dir = env!("CARGO_WORKSPACE_DIR");
+        PathBuf::from(workspace_dir)
+            .join("tests")
+            .join("nexus")
+            .join("guest")
+            .canonicalize()
+            .expect("Failed to find or canonicalize test guest program at <CARGO_WORKSPACE_DIR>/tests/compile/nexus")
+    }
+
+    #[test]
+    fn test_compile() -> anyhow::Result<()> {
+        let test_guest_path = get_test_guest_program_path();
+        let elf_path = NEXUS_TARGET::compile(&test_guest_path)?;
+        let prover: Stwo<Local> = Stwo::new_from_file(&elf_path.to_string_lossy().to_string())?;
+        let elf = prover.elf.clone();
+        assert!(
+            !elf.instructions.is_empty(),
+            "ELF bytes should not be empty."
+        );
+        Ok(())
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_execute_empty_input_panic() {
+        // Panics because the program expects input arguments, but we supply none
+        let test_guest_path = get_test_guest_program_path();
+        let elf = NEXUS_TARGET::compile(&test_guest_path).expect("compilation failed");
+        let empty_input = Input::new();
+        let zkvm = EreNexus::new(elf, ProverResourceType::Cpu);
+
+        zkvm.execute(&empty_input).unwrap();
+    }
+
+    #[test]
+    fn test_execute() {
+        let test_guest_path = get_test_guest_program_path();
+        let elf = NEXUS_TARGET::compile(&test_guest_path).expect("compilation failed");
+        let mut input = Input::new();
+        input.write(10u64);
+
+        let zkvm = EreNexus::new(elf, ProverResourceType::Cpu);
+        zkvm.execute(&input).unwrap();
+    }
+
+    #[test]
+    fn test_prove_verify() {
+        let test_guest_path = get_test_guest_program_path();
+        let elf = NEXUS_TARGET::compile(&test_guest_path).expect("compilation failed");
+        let mut input = Input::new();
+        input.write(10u64);
+
+        let zkvm = EreNexus::new(elf, ProverResourceType::Cpu);
+        let (proof, _) = zkvm.prove(&input).unwrap();
+        zkvm.verify(&proof).expect("proof should verify");
+    }
+}

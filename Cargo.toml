@@ -7,10 +7,16 @@ members = [
     "crates/ere-risczero",
     "crates/ere-openvm",
     "crates/ere-pico",
+    "crates/ere-nexus",
     "crates/ere-jolt",
     "crates/ere-zisk",
+    # test guest
+    "tests/nexus/guest"
 ]
 resolver = "2"
+
+exclude = ["tests"]
+
 
 [workspace.package]
 version = "0.1.0"
