@@ -1,7 +1,14 @@
 use crate::error::CompileError;
-use std::{fs, path::Path, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 use toml::Value as TomlValue;
 use tracing::info;
+
+const ZISK_TOOLCHAIN: &str = "zisk";
+const ZISK_TARGET: &str = "riscv64ima-zisk-zkvm-elf";
 
 /// Compile the guest crate and return raw ELF bytes.
 pub fn compile_zisk_program(program_crate_path: &Path) -> Result<Vec<u8>, CompileError> {
@@ -47,23 +54,55 @@ pub fn compile_zisk_program(program_crate_path: &Path) -> Result<Vec<u8>, Compil
     info!("Parsed program name: {program_name}");
 
     // ── build ─────────────────────────────────────────────────────────────
-    let status = Command::new("cargo-zisk")
+    // Get the path to ZisK toolchain's `rustc` so we could set the env
+    // `RUSTC=...` for `cargo` instead of using `cargo +zisk ...`.
+    let zisk_rustc = {
+        let output = Command::new("rustc")
+            .env("RUSTUP_TOOLCHAIN", ZISK_TOOLCHAIN)
+            .arg("--print")
+            .arg("sysroot")
+            .output()
+            .map_err(|e| CompileError::RustcSysroot { source: e })?;
+        PathBuf::from(String::from_utf8_lossy(&output.stdout).trim())
+            .join("bin")
+            .join("rustc")
+    };
+
+    let status = Command::new("cargo")
         .current_dir(program_crate_path)
-        .args(["build", "--release"])
+        .env("RUSTC", zisk_rustc)
+        .args(["build", "--release", "--target", ZISK_TARGET])
         .status()
-        .map_err(|e| CompileError::CargoZiskBuild {
+        .map_err(|e| CompileError::CargoBuild {
             cwd: program_crate_path.to_path_buf(),
             source: e,
         })?;
 
     if !status.success() {
-        return Err(CompileError::CargoZiskBuildFailed {
+        return Err(CompileError::CargoBuildFailed {
             status,
             path: program_crate_path.to_path_buf(),
         });
     }
 
-    let elf_path = program_crate_path
+    // Get the workspace directory.
+    let program_workspace_path = {
+        let output = Command::new("cargo")
+            .current_dir(program_crate_path)
+            .arg("locate-project")
+            .arg("--workspace")
+            .arg("--message-format=plain")
+            .output()
+            .map_err(|e| CompileError::CargoLocateProject { source: e })?;
+        PathBuf::from(
+            String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .strip_suffix("Cargo.toml")
+                .expect("location to be path to Cargo.toml"),
+        )
+    };
+
+    let elf_path = program_workspace_path
         .join("target")
         .join("riscv64ima-zisk-zkvm-elf")
         .join("release")
