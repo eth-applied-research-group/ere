@@ -61,8 +61,13 @@ pub enum CompileError {
         #[source]
         source: io::Error,
     },
+    #[error("Failed to execute `cargo locate-project --workspace --message-format=plain`")]
+    CargoLocateProject {
+        #[source]
+        source: io::Error,
+    },
     #[error("Failed to execute `RUSTC=$ZISK_RUSTC cargo build --release ...` in {cwd}: {source}")]
-    CargoZiskBuild {
+    CargoBuild {
         cwd: PathBuf,
         #[source]
         source: io::Error,
@@ -70,7 +75,7 @@ pub enum CompileError {
     #[error(
         "`RUSTC=$ZISK_RUSTC cargo build --release ...` failed with status: {status} for program at {path}"
     )]
-    CargoZiskBuildFailed { status: ExitStatus, path: PathBuf },
+    CargoBuildFailed { status: ExitStatus, path: PathBuf },
 }
 
 #[derive(Debug, Error)]
