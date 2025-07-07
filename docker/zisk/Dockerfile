@@ -31,6 +31,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     clang \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Copy the entire ere project context
+# The WORKDIR is /app from the base image
+WORKDIR /app
+COPY . .
+
+# Build the test first to make sure disk space on divices are enough.
+RUN echo "Building tests for ere-zisk library..." && \
+    cargo test --release -p ere-zisk --lib --no-run
+
 # Copy the ZisK SDK installer script from the workspace context
 COPY scripts/sdk_installers/install_zisk_sdk.sh /tmp/install_zisk_sdk.sh
 RUN chmod +x /tmp/install_zisk_sdk.sh
@@ -48,11 +57,6 @@ ENV PATH="${PATH}:${ZISK_BIN_DIR}"
 
 # Verify cargo-zisk is accessible
 RUN echo "Verifying Zisk installation in Dockerfile ..." && cargo-zisk --version
-
-# Copy the entire ere project context
-# The WORKDIR is /app from the base image
-WORKDIR /app
-COPY . .
 
 # Run only compile and execution test, because proving requires ~31 GiB disk
 # space for the provingKey.
