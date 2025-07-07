@@ -54,8 +54,10 @@ RUN echo "Verifying Zisk installation in Dockerfile ..." && cargo-zisk --version
 WORKDIR /app
 COPY . .
 
-# Run tests sequentially
+# Run only compile and execution test, because proving requires ~31 GiB disk
+# space for the provingKey.
 RUN echo "Running tests for ere-zisk library..." && \
-    cargo test --release -p ere-zisk --lib -- --color always
+    rm -rf ~/.zisk/provingKey && \
+    cargo test --release -p ere-zisk --lib -- --color always compile::tests execute_tests
 
 CMD ["/bin/bash"]
