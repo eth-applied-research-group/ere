@@ -13,6 +13,8 @@ use zkvm_interface::{
     ProverResourceType, zkVM, zkVMError,
 };
 
+include!(concat!(env!("OUT_DIR"), "/sdk_version.rs"));
+
 mod compile;
 
 mod error;

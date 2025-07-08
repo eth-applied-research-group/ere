@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/build-utils",
     # zkVM interface
     "crates/zkvm-interface",
     # zkVMs
@@ -23,6 +24,7 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 # local dependencies
 zkvm-interface = { path = "crates/zkvm-interface" }
+build-utils = { path = "crates/build-utils" }
 
 [patch.crates-io]
 # These patches are only needed by Jolt
