@@ -32,7 +32,7 @@ ensure_tool_installed "cargo" "as cargo-zisk is a cargo subcommand"
 
 # Step 1: Download and run the script that installs the ziskup binary itself.
 # Export SETUP_KEY=proving to ensure no interactive options in `ziskup`.
-export SETUP_KEY=proving
+export SETUP_KEY=${SETUP_KEY:=proving}
 export ZISK_VERSION=0.8.1
 curl https://raw.githubusercontent.com/0xPolygonHermez/zisk/v0.8.1/ziskup/install.sh | sed "s/main/v$ZISK_VERSION/g" | bash
 unset SETUP_KEY
