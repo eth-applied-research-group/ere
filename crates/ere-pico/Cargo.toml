@@ -11,5 +11,8 @@ thiserror = "2"
 pico-sdk = { git = "https://github.com/brevis-network/pico", tag = "v1.1.3" }
 bincode = "1.3.3"
 
+[build-dependencies]
+build-utils = { workspace = true }
+
 [lints]
 workspace = true

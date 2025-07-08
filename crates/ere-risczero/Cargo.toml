@@ -17,6 +17,9 @@ tempfile = "3.3"
 serde_json = "1.0"
 thiserror = "2"
 
+[build-dependencies]
+build-utils = { workspace = true }
+
 [features]
 metal = ["risc0-zkvm/metal"]
 cuda = ["risc0-zkvm/cuda"]

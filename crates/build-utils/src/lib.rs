@@ -1,7 +1,7 @@
 use std::{env, fs, path::Path};
 
-// Generate a Rust source file that contains the name and version of the SDK.
-pub fn gen_name_and_sdk_version(name: &str, sdk_dep_name: &str) {
+// Detect and generate a Rust source file that contains the name and version of the SDK.
+pub fn detect_and_generate_name_and_sdk_version(name: &str, sdk_dep_name: &str) {
     let meta = cargo_metadata::MetadataCommand::new()
         .exec()
         .expect("Failed to get cargo metadata");
@@ -15,6 +15,11 @@ pub fn gen_name_and_sdk_version(name: &str, sdk_dep_name: &str) {
             panic!("Dependency {sdk_dep_name} not found in Cargo.toml");
         });
 
+    gen_name_and_sdk_version(name, &version);
+}
+
+// Generate a Rust source file that contains the provided name and version of the SDK.
+pub fn gen_name_and_sdk_version(name: &str, version: &str) {
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest = Path::new(&out_dir).join("sdk_version.rs");
     fs::write(
@@ -22,6 +27,5 @@ pub fn gen_name_and_sdk_version(name: &str, sdk_dep_name: &str) {
         format!("pub const NAME: &str = \"{name}\";\npub const SDK_VERSION: &str = \"{version}\";"),
     )
     .unwrap();
-
     println!("cargo:rerun-if-changed=Cargo.lock");
 }
