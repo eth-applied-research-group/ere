@@ -21,10 +21,10 @@ pub fn detect_and_generate_name_and_sdk_version(name: &str, sdk_dep_name: &str) 
 // Generate a Rust source file that contains the provided name and version of the SDK.
 pub fn gen_name_and_sdk_version(name: &str, version: &str) {
     let out_dir = env::var("OUT_DIR").unwrap();
-    let dest = Path::new(&out_dir).join("sdk_version.rs");
+    let dest = Path::new(&out_dir).join("name_and_sdk_version.rs");
     fs::write(
         &dest,
-        format!("pub const NAME: &str = \"{name}\";\npub const SDK_VERSION: &str = \"{version}\";"),
+        format!("const NAME: &str = \"{name}\";\nconst SDK_VERSION: &str = \"{version}\";"),
     )
     .unwrap();
     println!("cargo:rerun-if-changed=Cargo.lock");

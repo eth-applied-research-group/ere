@@ -7,6 +7,8 @@ use zkvm_interface::{
     zkVM, zkVMError,
 };
 
+include!(concat!(env!("OUT_DIR"), "/name_and_sdk_version.rs"));
+
 mod compile;
 pub use compile::Risc0Program;
 
@@ -120,6 +122,14 @@ impl zkVM for EreRisc0 {
         decoded
             .verify(self.program.image_id)
             .map_err(|err| zkVMError::Other(Box::new(err)))
+    }
+
+    fn name() -> &'static str {
+        NAME
+    }
+
+    fn sdk_version() -> &'static str {
+        SDK_VERSION
     }
 }
 
