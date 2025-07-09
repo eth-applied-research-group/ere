@@ -78,10 +78,10 @@ impl zkVM for ErePico {
         }
 
         let start = Instant::now();
-        let num_cycles = client.emulate(stdin);
+        let emulation_result = client.emulate(stdin);
 
         Ok(ProgramExecutionReport {
-            total_num_cycles: num_cycles,
+            total_num_cycles: emulation_result.0,
             execution_duration: start.elapsed(),
             ..Default::default()
         })
