@@ -11,6 +11,7 @@ on:
 
 jobs:
   build_pico_image:
+    if: ${{ false }} # See issue #49
     name: Build Pico Docker Image
     runs-on: ubuntu-latest
 
