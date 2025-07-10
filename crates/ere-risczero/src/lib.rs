@@ -29,7 +29,6 @@ impl Compiler for RV32_IM_RISCZERO_ZKVM_ELF {
 
 pub struct EreRisc0 {
     program: <RV32_IM_RISCZERO_ZKVM_ELF as Compiler>::Program,
-    #[allow(dead_code)]
     resource_type: ProverResourceType,
 }
 
