@@ -1,4 +1,4 @@
-name: Check ZisK Docker Image
+name: Test ZisK (Docker)
 
 on:
   push:
@@ -7,10 +7,9 @@ on:
   pull_request:
     branches:
       - master
-  workflow_dispatch:
 
 jobs:
-  build_zisk_image:
+  test-zisk-via-docker-build:
     name: Build ZisK Docker Image
     runs-on: ubuntu-latest
 
@@ -21,16 +20,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build dependent Docker base image
+      - name: Build ere-base image
         run: |
           docker build \
-            --file docker/base/Dockerfile.base \
             --tag ere-base:latest \
-            .
+            --file docker/base/Dockerfile.base .
 
-      - name: Build ZisK Docker image
+      - name: Build ere-builder-zisk image
         run: |
           docker build \
-            --file docker/zisk/Dockerfile \
-            --tag ere-builder-zisk-check:latest \
-            .
+            --tag ere-builder-zisk:latest \
+            --file docker/zisk/Dockerfile .
