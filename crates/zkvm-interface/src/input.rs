@@ -48,7 +48,7 @@ impl Input {
     }
 
     /// Iterate over the items
-    pub fn iter(&self) -> std::slice::Iter<InputItem> {
+    pub fn iter(&self) -> std::slice::Iter<'_, InputItem> {
         self.items.iter()
     }
 }

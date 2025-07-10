@@ -1,4 +1,4 @@
-name: Check OpenVM Docker Image
+name: Test OpenVM (Docker)
 
 on:
   push:
@@ -7,10 +7,9 @@ on:
   pull_request:
     branches:
       - master
-  workflow_dispatch:
 
 jobs:
-  build_openvm_image:
+  test-openvm-via-docker-build:
     name: Build OpenVM Docker Image
     runs-on: ubuntu-latest
 
@@ -21,16 +20,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build dependent Docker base image
+      - name: Build ere-base image
         run: |
           docker build \
-            --file docker/base/Dockerfile.base \
             --tag ere-base:latest \
-            .
+            --file docker/base/Dockerfile.base .
 
-      - name: Build OpenVM Docker image
+      - name: Build ere-builder-openvm image
         run: |
           docker build \
-            --file docker/openvm/Dockerfile \
-            --tag ere-builder-openvm-check:latest \
-            .
+            --tag ere-builder-openvm:latest \
+            --file docker/openvm/Dockerfile .
