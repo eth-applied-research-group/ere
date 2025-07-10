@@ -29,6 +29,6 @@ COPY . .
 
 # Run tests
 RUN echo "Running tests for ere-pico library..." && \
-    cargo test --release -p ere-pico --lib -- --color always
+    cargo "+${PICO_TOOLCHAIN_VERSION}" test --release -p ere-pico --lib -- --color always
 
 CMD ["/bin/bash"] 
