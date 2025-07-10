@@ -1,4 +1,4 @@
-name: Check OpenVM Docker Image
+name: Test Pico (Docker)
 
 on:
   push:
@@ -7,11 +7,10 @@ on:
   pull_request:
     branches:
       - master
-  workflow_dispatch:
 
 jobs:
-  build_openvm_image:
-    name: Build OpenVM Docker Image
+  test-pico-via-docker-build:
+    name: Build Pico Docker Image
     runs-on: ubuntu-latest
 
     steps:
@@ -21,16 +20,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build dependent Docker base image
+      - name: Build ere-base image
         run: |
           docker build \
-            --file docker/base/Dockerfile.base \
             --tag ere-base:latest \
-            .
+            --file docker/base/Dockerfile.base .
 
-      - name: Build OpenVM Docker image
+      - name: Build ere-builder-pico image
         run: |
           docker build \
-            --file docker/openvm/Dockerfile \
-            --tag ere-builder-openvm-check:latest \
-            .
+            --tag ere-builder-pico:latest \
+            --file docker/pico/Dockerfile .
