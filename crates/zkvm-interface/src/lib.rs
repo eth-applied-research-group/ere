@@ -83,8 +83,8 @@ pub trait zkVM {
     fn verify(&self, proof: &[u8]) -> Result<(), zkVMError>;
 
     /// Returns the name of the zkVM
-    fn name() -> &'static str;
+    fn name(&self) -> &'static str;
 
     /// Returns the version of the zkVM SDK (e.g. 0.1.0)
-    fn sdk_version() -> &'static str;
+    fn sdk_version(&self) -> &'static str;
 }
