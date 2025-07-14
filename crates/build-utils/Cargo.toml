@@ -6,7 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+tracing.workspace = true
 cargo_metadata = "0.20.0"
+thiserror = "2.0.12"
 
 [lints]
 workspace = true

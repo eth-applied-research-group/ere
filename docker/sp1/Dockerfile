@@ -34,11 +34,6 @@ RUN cargo prove --version
 # Copy the entire ere project context
 # The WORKDIR is /app from the base image
 WORKDIR /app
-COPY . .
-
-# Run tests
-RUN echo "Running tests for ere-sp1 library..." && \
-    cargo test --release -p ere-sp1 --lib -- --color always
 
 CMD ["/bin/bash"] 
 

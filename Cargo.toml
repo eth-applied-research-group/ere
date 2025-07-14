@@ -22,6 +22,7 @@ license = "MIT OR Apache-2.0"
 [workspace.lints]
 
 [workspace.dependencies]
+tracing = "0.1.41"
 # local dependencies
 zkvm-interface = { path = "crates/zkvm-interface" }
 build-utils = { path = "crates/build-utils" }

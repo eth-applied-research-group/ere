@@ -2,7 +2,6 @@
 
 use std::time::Instant;
 
-use compile::compile_sp1_program;
 use sp1_sdk::{
     CpuProver, CudaProver, NetworkProver, Prover, ProverClient, SP1ProofWithPublicValues,
     SP1ProvingKey, SP1Stdin, SP1VerifyingKey,
@@ -108,7 +107,7 @@ impl Compiler for RV32_IM_SUCCINCT_ZKVM_ELF {
     type Program = Vec<u8>;
 
     fn compile(path_to_program: &std::path::Path) -> Result<Self::Program, Self::Error> {
-        compile_sp1_program(path_to_program).map_err(SP1Error::from)
+        compile::compile(path_to_program).map_err(SP1Error::from)
     }
 }
 
