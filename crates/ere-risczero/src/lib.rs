@@ -124,11 +124,11 @@ impl zkVM for EreRisc0 {
             .map_err(|err| zkVMError::Other(Box::new(err)))
     }
 
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         NAME
     }
 
-    fn sdk_version() -> &'static str {
+    fn sdk_version(&self) -> &'static str {
         SDK_VERSION
     }
 }

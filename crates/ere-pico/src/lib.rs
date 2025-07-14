@@ -128,11 +128,11 @@ impl zkVM for ErePico {
         todo!("Verification method missing from sdk")
     }
 
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         NAME
     }
 
-    fn sdk_version() -> &'static str {
+    fn sdk_version(&self) -> &'static str {
         SDK_VERSION
     }
 }
