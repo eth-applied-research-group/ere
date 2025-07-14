@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     io::{self, Write},
+    os::unix::fs::symlink,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     time,
@@ -68,7 +69,7 @@ impl zkVM for EreZisk {
             .map_err(ZiskError::Execute)?;
 
         let mut tempdir =
-            ZiskTempDir::new().map_err(|e| ZiskError::Execute(ExecuteError::TempDir(e)))?;
+            ZiskTempDir::new(false).map_err(|e| ZiskError::Execute(ExecuteError::TempDir(e)))?;
         tempdir
             .write_elf(&self.elf)
             .map_err(|e| ZiskError::Execute(ExecuteError::TempDir(e)))?;
@@ -128,7 +129,7 @@ impl zkVM for EreZisk {
             .map_err(ZiskError::Prove)?;
 
         let mut tempdir =
-            ZiskTempDir::new().map_err(|e| ZiskError::Prove(ProveError::TempDir(e)))?;
+            ZiskTempDir::new(true).map_err(|e| ZiskError::Prove(ProveError::TempDir(e)))?;
         tempdir
             .write_elf(&self.elf)
             .map_err(|e| ZiskError::Prove(ProveError::TempDir(e)))?;
@@ -138,24 +139,28 @@ impl zkVM for EreZisk {
 
         // Setup ROM.
 
-        // FIXME: This currently uses global build directory `${HOME}/.zisk/zisk/emulator-asm`
-        //        which causes `compile_zisk_program` to panic if ran in parallel.
-        //        We should create a temporary directory and copy only necessary
-        //        data to setup each ELF.
-        let status = Command::new("cargo-zisk")
-            .arg("rom-setup")
-            .arg("--elf")
-            .arg(tempdir.elf_path())
-            .arg("--output-dir")
-            .arg(tempdir.rom_dir_path())
-            .status()
-            .map_err(|e| ZiskError::Prove(ProveError::CargoZiskRomSetup { source: e }))?;
+        if !is_bin_exists(&self.elf, tempdir.elf_path()) {
+            let status = Command::new("cargo-zisk")
+                .arg("rom-setup")
+                .arg("--elf")
+                .arg(tempdir.elf_path())
+                .arg("--zisk-path")
+                .arg(tempdir.zisk_dir_path())
+                .status()
+                .map_err(|e| ZiskError::Prove(ProveError::CargoZiskRomSetup { source: e }))?;
 
-        if !status.success() {
-            return Err(ZiskError::Prove(ProveError::CargoZiskRomSetupFailed { status }).into());
+            if !status.success() {
+                return Err(
+                    ZiskError::Prove(ProveError::CargoZiskRomSetupFailed { status }).into(),
+                );
+            }
         }
 
         // Prove.
+
+        // TODO: Use `mpirun --np {num_processes} cargo-zisk prove ...` to
+        //       utilize multiple CPU cores, probably need the `ProverResourceType`
+        //       to specify the number of cores to use.
 
         let start = time::Instant::now();
         match self.resource {
@@ -164,16 +169,17 @@ impl zkVM for EreZisk {
                     .arg("prove")
                     .arg("--elf")
                     .arg(tempdir.elf_path())
-                    .arg("--asm")
-                    .arg(tempdir.asm_path())
                     .arg("--input")
                     .arg(tempdir.input_path())
                     .arg("--output-dir")
                     .arg(tempdir.output_dir_path())
-                    // FIXME: Not sure why if we don't set the flag `aggregation`
-                    //        there will be no proof, but ideally we should
-                    //        only generate the core proof as other zkVMs.
-                    .arg("--aggregation")
+                    .args([
+                        "--aggregation",
+                        "--verify-proofs",
+                        "--save-proofs",
+                        // Uncomment this when in memory constrained environment.
+                        // "--unlock-mapped-memory",
+                    ])
                     .status()
                     .map_err(|e| ZiskError::Prove(ProveError::CargoZiskProve { source: e }))?;
 
@@ -184,9 +190,38 @@ impl zkVM for EreZisk {
                 }
             }
             ProverResourceType::Gpu => {
-                // TODO: Need to install another version of `cargo-zisk` with
-                //       `features = gpu` and call it here.
-                unimplemented!()
+                // TODO: Set env `CUDA_VISIBLE_DEVICES = {0..num_devices}` to
+                //       control how many GPUs to use, probably need the `ProverResourceType`
+                //       to specify the number of cores to use.
+                let witness_lib_path = dot_zisk_dir_path()
+                    .join("bin")
+                    .join("libzisk_witness_gpu.so");
+                let status = Command::new("cargo-zisk-gpu")
+                    .arg("prove")
+                    .arg("--witness-lib")
+                    .arg(witness_lib_path)
+                    .arg("--elf")
+                    .arg(tempdir.elf_path())
+                    .arg("--input")
+                    .arg(tempdir.input_path())
+                    .arg("--output-dir")
+                    .arg(tempdir.output_dir_path())
+                    .args([
+                        "--aggregation",
+                        "--verify-proofs",
+                        "--save-proofs",
+                        "--preallocate",
+                        // Uncomment this when in memory constrained environment.
+                        // "--unlock-mapped-memory",
+                    ])
+                    .status()
+                    .map_err(|e| ZiskError::Prove(ProveError::CargoZiskProve { source: e }))?;
+
+                if !status.success() {
+                    return Err(
+                        ZiskError::Prove(ProveError::CargoZiskProveFailed { status }).into(),
+                    );
+                }
             }
             ProverResourceType::Network(_) => {
                 panic!(
@@ -219,7 +254,7 @@ impl zkVM for EreZisk {
             .map_err(|err| ZiskError::Verify(VerifyError::Bincode(err)))?;
 
         let mut tempdir =
-            ZiskTempDir::new().map_err(|e| ZiskError::Verify(VerifyError::TempDir(e)))?;
+            ZiskTempDir::new(false).map_err(|e| ZiskError::Verify(VerifyError::TempDir(e)))?;
         tempdir
             .write_proof(&proof_with_public_values.proof)
             .map_err(|e| ZiskError::Verify(VerifyError::TempDir(e)))?;
@@ -257,19 +292,95 @@ impl zkVM for EreZisk {
     }
 }
 
+fn dot_zisk_dir_path() -> PathBuf {
+    PathBuf::from(std::env::var("HOME").expect("env `$HOME` should be set")).join(".zisk")
+}
+
+/// Check if these files exists in `$HOME/.zisk/cache`:
+///
+/// - `{elf_file_stem}-{elf_hash}-mo.bin`
+/// - `{elf_file_stem}-{elf_hash}-mt.bin`
+/// - `{elf_file_stem}-{elf_hash}-rh.bin`
+///
+/// Which are generated by `cargo-zisk rom-setup ...`.
+fn is_bin_exists(elf: &[u8], elf_path: impl AsRef<Path>) -> bool {
+    let stem = elf_path
+        .as_ref()
+        .file_stem()
+        .expect("ELF file has name")
+        .to_str()
+        .expect("ELF file name is valid UTF-8");
+    let hash = blake3::hash(elf).to_hex().to_string();
+    ["mo", "mt", "rh"].into_iter().all(|suffix| {
+        fs::exists(
+            dot_zisk_dir_path()
+                .join("cache")
+                .join(format!("{stem}-{hash}-{suffix}.bin")),
+        )
+        .ok()
+            == Some(true)
+    })
+}
+
 struct ZiskTempDir {
     tempdir: TempDir,
     elf_hash: Option<String>,
 }
 
 impl ZiskTempDir {
-    fn new() -> io::Result<Self> {
+    /// Create temporary directories for:
+    /// - `guest.elf` - ELF compiled from guest program.
+    /// - `zisk/` - Directory for building process during `rom-setup`.
+    /// - `input.bin` - Input of execution or proving.
+    /// - `output/vadcop_final_proof.json` - Aggregated proof generated by proving.
+    /// - `output/publics.json` - Public values generated by proving.
+    ///
+    /// Set `with_zisk_dir` only when `rom-setup` is to be used.
+    fn new(with_zisk_dir: bool) -> io::Result<Self> {
         let tempdir = Self {
             tempdir: tempdir()?,
             elf_hash: None,
         };
-        fs::create_dir(tempdir.rom_dir_path())?;
-        fs::create_dir_all(tempdir.proof_dir_path())?;
+
+        fs::create_dir(tempdir.output_dir_path())?;
+
+        if with_zisk_dir {
+            fs::create_dir_all(tempdir.zisk_dir_path())?;
+
+            // Check the global zisk directory exists.
+            let global_zisk_dir_path = dot_zisk_dir_path().join("zisk");
+            if !global_zisk_dir_path.exists() {
+                return Err(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    format!(
+                        "Global .zisk/zisk directory not found at: {}",
+                        global_zisk_dir_path.display()
+                    ),
+                ));
+            }
+
+            // Symlink necessary files for `make` command of `cargo-zisk rom-setup`.
+            // The `Makefile` can be found https://github.com/0xPolygonHermez/zisk/blob/main/emulator-asm/Makefile.
+            symlink(
+                dot_zisk_dir_path().join("bin"),
+                tempdir.dot_zisk_dir_path().join("bin"),
+            )?;
+            let temp_zisk_dir_path = tempdir.zisk_dir_path();
+            fs::create_dir_all(temp_zisk_dir_path.join("emulator-asm").join("build"))?;
+            symlink(
+                global_zisk_dir_path.join("emulator-asm").join("Makefile"),
+                temp_zisk_dir_path.join("emulator-asm").join("Makefile"),
+            )?;
+            symlink(
+                global_zisk_dir_path.join("emulator-asm").join("src"),
+                temp_zisk_dir_path.join("emulator-asm").join("src"),
+            )?;
+            symlink(
+                global_zisk_dir_path.join("lib-c"),
+                temp_zisk_dir_path.join("lib-c"),
+            )?;
+        }
+
         Ok(tempdir)
     }
 
@@ -300,22 +411,15 @@ impl ZiskTempDir {
     }
 
     fn elf_path(&self) -> PathBuf {
-        self.tempdir.path().join("elf")
+        self.tempdir.path().join("guest.elf")
     }
 
-    fn rom_dir_path(&self) -> PathBuf {
-        self.tempdir.path().join("rom")
+    fn dot_zisk_dir_path(&self) -> PathBuf {
+        self.tempdir.path().join(".zisk")
     }
 
-    fn asm_path(&self) -> PathBuf {
-        let elf_path = self.elf_path();
-        let stem = elf_path
-            .file_stem()
-            .expect("ELF file has name")
-            .to_str()
-            .expect("ELF file name is valid UTF-8");
-        let hash = self.elf_hash.as_deref().expect("setup has been called");
-        self.rom_dir_path().join(format!("{stem}-{hash}-mt.bin"))
+    fn zisk_dir_path(&self) -> PathBuf {
+        self.dot_zisk_dir_path().join("zisk")
     }
 
     fn input_path(&self) -> PathBuf {
@@ -330,12 +434,8 @@ impl ZiskTempDir {
         self.output_dir_path().join("publics.json")
     }
 
-    fn proof_dir_path(&self) -> PathBuf {
-        self.output_dir_path().join("proofs")
-    }
-
     fn proof_path(&self) -> PathBuf {
-        self.proof_dir_path().join("vadcop_final_proof.json")
+        self.output_dir_path().join("vadcop_final_proof.bin")
     }
 }
 
