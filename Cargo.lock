@@ -2304,6 +2304,7 @@ dependencies = [
  "bincode",
  "blake3",
  "build-utils",
+ "lib-c",
  "serde",
  "tempfile",
  "thiserror 2.0.12",
@@ -3741,6 +3742,11 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 dependencies = [
  "spin",
 ]
+
+[[package]]
+name = "lib-c"
+version = "0.8.1"
+source = "git+https://github.com/0xPolygonHermez/zisk.git?tag=v0.8.1#f9a3655e16e1a767235fe50c23b6de74ad2f6534"
 
 [[package]]
 name = "libc"
