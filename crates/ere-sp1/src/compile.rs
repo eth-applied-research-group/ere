@@ -1,4 +1,7 @@
-use std::{path::Path, process::Command};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use build_utils::docker;
 use tempfile::TempDir;
@@ -9,7 +12,7 @@ use crate::error::CompileError;
 pub fn compile(guest_program_full_path: &Path) -> Result<Vec<u8>, CompileError> {
     // Build the SP1 docker image
     let tag = "ere-build-sp1:latest";
-    docker::build_image("docker/sp1/Dockerfile", tag)
+    docker::build_image(&PathBuf::from("docker/sp1/Dockerfile"), tag)
         .map_err(|e| CompileError::DockerImageBuildFailed(Box::new(e)))?;
 
     // Compile the guest program using the SP1 docker image
@@ -23,28 +26,27 @@ pub fn compile(guest_program_full_path: &Path) -> Result<Vec<u8>, CompileError> 
         .ok_or_else(|| CompileError::InvalidTempOutputPath(elf_output_dir.path().to_path_buf()))?;
 
     info!("Compiling program: {}", guest_program_path_str);
+
     Command::new("docker")
         .args([
             "run",
             "--rm",
+            // Mount volumes
             "-v",
-            &format!("{guest_program_path_str}:/app"),
+            &format!("{guest_program_path_str}:/guest-program"),
             "-v",
             &format!("{elf_output_dir_str}:/output"),
             tag,
-            "cargo",
-            "prove",
-            "build",
-            "--output-directory",
+            // Guest compiler execution
+            "./guest-compiler",
+            "/guest-program",
             "/output",
-            "--elf-name",
-            "guest_program.elf",
         ])
         .status()
         .map_err(|e| CompileError::DockerImageBuildFailed(Box::new(e)))?;
 
     // Read the compiled ELF program from the output directory
-    let elf = std::fs::read(elf_output_dir.path().join("guest_program.elf"))
+    let elf = std::fs::read(elf_output_dir.path().join("guest.elf"))
         .map_err(CompileError::ReadCompiledELFProgram)?;
 
     Ok(elf)

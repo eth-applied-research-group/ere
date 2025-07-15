@@ -1,12 +1,12 @@
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
 use thiserror::Error;
 use tracing::info;
 
-pub fn build_image(dockerfile_workspace_relative_path: &str, tag: &str) -> Result<(), Error> {
+pub fn build_image(compiler_dockerfile: &Path, tag: &str) -> Result<(), Error> {
     // Check that Docker is installed and available
     if Command::new("docker")
         .arg("--version")
@@ -17,6 +17,12 @@ pub fn build_image(dockerfile_workspace_relative_path: &str, tag: &str) -> Resul
     {
         return Err(Error::DockerIsNotAvailable);
     }
+
+    info!(
+        "Building Docker image in {} with tag {}",
+        compiler_dockerfile.display(),
+        tag
+    );
 
     let cargo_workspace_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -43,7 +49,8 @@ pub fn build_image(dockerfile_workspace_relative_path: &str, tag: &str) -> Resul
         return Err(Error::ImageBuildFailed);
     }
 
-    let dockerfile_path = cargo_workspace_dir.join(dockerfile_workspace_relative_path);
+    info!("Building guest compiler image...");
+    let dockerfile_path = cargo_workspace_dir.join(compiler_dockerfile);
     let status = Command::new("docker")
         .args([
             "build",
