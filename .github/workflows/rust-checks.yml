@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs: 
-  check-lints:
+  check-fmt:
     name: Lints
     runs-on: ubuntu-latest
     steps:
@@ -19,7 +19,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          components: clippy, rustfmt
+          components: rustfmt
       
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
@@ -27,12 +27,13 @@ jobs:
       - name: Check formatting
         run: cargo fmt --check --all
 
-      - name: Check clippy
-        run: cargo clippy --bins --lib --examples --tests --benches --all-features -p ere-sp1
-
   check-tests:
     name: Tests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [ere-sp1] 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,11 +47,13 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
-          components: clippy, rustfmt
+          components: clippy
       
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
+      
+      - name: Check clippy
+        run: cargo clippy --bins --lib --examples --tests --benches --all-features -p ${{ matrix.crate }}
 
       - name: Run tests
-        run: cargo test -p ere-sp1
- 
+        run: cargo test -p ${{ matrix.crate }}
