@@ -6,7 +6,8 @@ COPY . .
 RUN cargo build --release -p sp1-guest-compiler
 
 # Build zkVM builder image
-FROM ere-base
+ARG BASE_IMAGE_TAG=latest
+FROM ere-base:${BASE_IMAGE_TAG}
 
 ARG USERNAME=ere_user
 
