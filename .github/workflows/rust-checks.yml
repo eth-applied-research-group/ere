@@ -56,4 +56,4 @@ jobs:
         run: cargo clippy --bins --lib --examples --tests --benches --all-features -p ${{ matrix.crate }}
 
       - name: Run tests
-        run: cargo test -p ${{ matrix.crate }}
+        run: cargo test --release -p ${{ matrix.crate }}
