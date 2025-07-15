@@ -32,7 +32,7 @@ export PATH="${SP1UP_HOME}/bin:${SP1_HOME}/bin:$PATH"
 export SDK_VERSION="${SP1UP_SDK_INSTALL_VERSION:-latest}"
 
 # Run sp1up to install/update the toolchain
-if ! command -v sp1up  &> /dev/null; then
+if ! command -v sp1up &> /dev/null; then
     echo "Error: sp1up command not found after installation script. Check PATH or installation." >&2
     exit 1
 fi
