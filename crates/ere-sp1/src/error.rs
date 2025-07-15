@@ -29,6 +29,10 @@ pub enum SP1Error {
 pub enum CompileError {
     #[error("Failed to build Docker image: {0}")]
     DockerImageBuildFailed(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("Docker command failed to execute: {0}")]
+    DockerCommandFailed(#[source] std::io::Error),
+    #[error("Docker container run failed with status: {0}")]
+    DockerContainerRunFailed(std::process::ExitStatus),
     #[error("Invalid guest program path: {0}")]
     InvalidGuestPath(PathBuf),
     #[error("Failed to create temporary directory: {0}")]

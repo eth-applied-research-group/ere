@@ -27,7 +27,7 @@ pub fn compile(guest_program_full_path: &Path) -> Result<Vec<u8>, CompileError> 
 
     info!("Compiling program: {}", guest_program_path_str);
 
-    Command::new("docker")
+    let status = Command::new("docker")
         .args([
             "run",
             "--rm",
@@ -43,7 +43,11 @@ pub fn compile(guest_program_full_path: &Path) -> Result<Vec<u8>, CompileError> 
             "/output",
         ])
         .status()
-        .map_err(|e| CompileError::DockerImageBuildFailed(Box::new(e)))?;
+        .map_err(CompileError::DockerCommandFailed)?;
+
+    if !status.success() {
+        return Err(CompileError::DockerContainerRunFailed(status));
+    }
 
     // Read the compiled ELF program from the output directory
     let elf = std::fs::read(elf_output_dir.path().join("guest.elf"))
