@@ -1,7 +1,7 @@
 name: Rust Checks
 on:
   push:
-    branches: [ main, master, jsign-docker-sp1 ]
+    branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
 
