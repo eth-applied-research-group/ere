@@ -1,4 +1,4 @@
-name: Check Pico Docker Image
+name: Test ZisK (Docker)
 
 on:
   push:
@@ -7,11 +7,10 @@ on:
   pull_request:
     branches:
       - master
-  workflow_dispatch:
 
 jobs:
-  build_pico_image:
-    name: Build Pico Docker Image
+  test-zisk-via-docker-build:
+    name: Build ZisK Docker Image
     runs-on: ubuntu-latest
 
     steps:
@@ -21,16 +20,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build dependent Docker base image
+      - name: Build ere-base image
         run: |
           docker build \
-            --file docker/base/Dockerfile.base \
             --tag ere-base:latest \
-            .
+            --file docker/base/Dockerfile.base .
 
-      - name: Build Pico Docker image
+      - name: Build ere-builder-zisk image
         run: |
           docker build \
-            --file docker/pico/Dockerfile \
-            --tag ere-builder-pico-check:latest \
-            .
+            --tag ere-builder-zisk:latest \
+            --file docker/zisk/Dockerfile .
