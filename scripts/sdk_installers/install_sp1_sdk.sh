@@ -29,7 +29,7 @@ curl -L https://sp1up.succinct.xyz | bash -s -- --yes
 # and for subsequent commands if this script is sourced.
 export PATH="${SP1UP_HOME}/bin:${SP1_HOME}/bin:$PATH"
 
-export SDK_VERSION="${SP1UP_VERSION:-latest}"
+export SDK_VERSION="${SP1UP_SDK_INSTALL_VERSION:-latest}"
 
 # Run sp1up to install/update the toolchain
 if ! command -v sp1up  &> /dev/null; then

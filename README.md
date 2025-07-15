@@ -49,12 +49,18 @@
 
 ## Quick Start
 
-### 1. Install SDKs
+This guide assumes you have Rust and Cargo installed. If not, please refer to the [Rust installation guide](https://www.rust-lang.org/tools/install).
+Also, you must have Docker installed since some of the SDKs require it.
 
+### 1. Install SDKs (if required)
+
+All zkVMs but SP1 require you to install their SDKs, for example:
 ```bash
-bash scripts/sdk_installers/install_sp1_sdk.sh
 bash scripts/sdk_installers/install_jolt_sdk.sh
 ```
+
+For SP1, guest program compilation uses Docker. With time more zkVMs will follow this patterns so installing SDKs
+in the host machine isn't necessary.
 
 ### 2. Add Dependencies
 
