@@ -1,3 +1,5 @@
+ARG BASE_IMAGE_TAG=latest
+
 # Build guest-compiler binary
 FROM rust:1.85 AS builder
 RUN apt-get update && apt-get install -y build-essential libclang-dev
@@ -6,7 +8,6 @@ COPY . .
 RUN cargo build --release -p sp1-guest-compiler
 
 # Build zkVM builder image
-ARG BASE_IMAGE_TAG=latest
 FROM ere-base:${BASE_IMAGE_TAG}
 
 ARG USERNAME=ere_user
