@@ -6,7 +6,7 @@ use std::{
 use thiserror::Error;
 use tracing::info;
 
-pub fn build_image(dockerfile_relative_path: &str, tag: &str) -> Result<(), Error> {
+pub fn build_image(dockerfile_workspace_relative_path: &str, tag: &str) -> Result<(), Error> {
     // Check that Docker is installed and available
     if Command::new("docker")
         .arg("--version")
@@ -18,15 +18,14 @@ pub fn build_image(dockerfile_relative_path: &str, tag: &str) -> Result<(), Erro
         return Err(Error::DockerIsNotAvailable);
     }
 
-    // Build the Docker image
-    let cargo_workspace_dir = env!("CARGO_WORKSPACE_DIR");
+    let cargo_workspace_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .unwrap();
 
     // Build base image
     info!("Building base Docker image...");
-    let dockerfile_base_path =
-        PathBuf::from(cargo_workspace_dir).join("docker/base/Dockerfile.base");
-
-    info!("Building base Dockerfile at: {:?}", dockerfile_base_path);
+    let dockerfile_base_path = cargo_workspace_dir.join("docker/base/Dockerfile.base");
     let status = Command::new("docker")
         .args([
             "build",
@@ -36,7 +35,7 @@ pub fn build_image(dockerfile_relative_path: &str, tag: &str) -> Result<(), Erro
             dockerfile_base_path
                 .to_str()
                 .ok_or_else(|| Error::InvalidDockerfilePath(dockerfile_base_path.clone()))?,
-            cargo_workspace_dir,
+            cargo_workspace_dir.to_str().unwrap(),
         ])
         .status()
         .map_err(|e| Error::DockerBuildFailed(e.into()))?;
@@ -44,18 +43,17 @@ pub fn build_image(dockerfile_relative_path: &str, tag: &str) -> Result<(), Erro
         return Err(Error::ImageBuildFailed);
     }
 
-    let dockerfile_path = PathBuf::from(cargo_workspace_dir).join(dockerfile_relative_path);
+    let dockerfile_path = cargo_workspace_dir.join(dockerfile_workspace_relative_path);
     let status = Command::new("docker")
         .args([
             "build",
-            "-q",
             "-t",
             tag,
             "-f",
             dockerfile_path
                 .to_str()
                 .ok_or_else(|| Error::InvalidDockerfilePath(dockerfile_path.clone()))?,
-            cargo_workspace_dir,
+            cargo_workspace_dir.to_str().unwrap(),
         ])
         .status()
         .map_err(|e| Error::DockerBuildFailed(e.into()))?;

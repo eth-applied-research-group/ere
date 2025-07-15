@@ -2,6 +2,7 @@ use std::{path::Path, process::Command};
 
 use build_utils::docker;
 use tempfile::TempDir;
+use tracing::info;
 
 use crate::error::CompileError;
 
@@ -15,14 +16,13 @@ pub fn compile(guest_program_full_path: &Path) -> Result<Vec<u8>, CompileError> 
     let guest_program_path_str = guest_program_full_path
         .to_str()
         .ok_or_else(|| CompileError::InvalidGuestPath(guest_program_full_path.to_path_buf()))?;
-    let mut elf_output_dir =
-        TempDir::new().map_err(CompileError::CreatingTempOutputDirectoryFailed)?;
-    elf_output_dir.disable_cleanup(true);
+    let elf_output_dir = TempDir::new().map_err(CompileError::CreatingTempOutputDirectoryFailed)?;
     let elf_output_dir_str = elf_output_dir
         .path()
         .to_str()
         .ok_or_else(|| CompileError::InvalidTempOutputPath(elf_output_dir.path().to_path_buf()))?;
 
+    info!("Mounting guest program at: {}", guest_program_path_str);
     Command::new("docker")
         .args([
             "run",
