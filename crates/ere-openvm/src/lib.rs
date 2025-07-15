@@ -18,6 +18,7 @@ use zkvm_interface::{
     zkVM, zkVMError,
 };
 
+include!(concat!(env!("OUT_DIR"), "/name_and_sdk_version.rs"));
 mod error;
 use error::{CompileError, OpenVMError, VerifyError};
 
@@ -162,6 +163,14 @@ impl zkVM for EreOpenVM {
             .map(|_payload| ())
             .map_err(|e| OpenVMError::Verify(VerifyError::Client(e.into())))
             .map_err(zkVMError::from)
+    }
+
+    fn name(&self) -> &'static str {
+        NAME
+    }
+
+    fn sdk_version(&self) -> &'static str {
+        SDK_VERSION
     }
 }
 

@@ -1,0 +1,12 @@
+[package]
+name = "build-utils"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cargo_metadata = "0.20.0"
+
+[lints]
+workspace = true

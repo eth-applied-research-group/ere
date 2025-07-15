@@ -13,6 +13,8 @@ use zkvm_interface::{
     ProverResourceType, zkVM, zkVMError,
 };
 
+include!(concat!(env!("OUT_DIR"), "/name_and_sdk_version.rs"));
+
 mod compile;
 
 mod error;
@@ -211,6 +213,14 @@ impl zkVM for EreSP1 {
 
         let client = Self::create_client(&self.resource);
         client.verify(&proof, &self.vk).map_err(zkVMError::from)
+    }
+
+    fn name(&self) -> &'static str {
+        NAME
+    }
+
+    fn sdk_version(&self) -> &'static str {
+        SDK_VERSION
     }
 }
 

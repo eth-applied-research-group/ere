@@ -5,6 +5,7 @@ use zkvm_interface::{
     zkVM, zkVMError,
 };
 
+include!(concat!(env!("OUT_DIR"), "/name_and_sdk_version.rs"));
 mod error;
 use error::PicoError;
 
@@ -77,10 +78,10 @@ impl zkVM for ErePico {
         }
 
         let start = Instant::now();
-        let num_cycles = client.emulate(stdin);
+        let emulation_result = client.emulate(stdin);
 
         Ok(ProgramExecutionReport {
-            total_num_cycles: num_cycles,
+            total_num_cycles: emulation_result.0,
             execution_duration: start.elapsed(),
             ..Default::default()
         })
@@ -125,6 +126,14 @@ impl zkVM for ErePico {
         let client = DefaultProverClient::new(&self.program);
         let _vk = client.riscv_vk();
         todo!("Verification method missing from sdk")
+    }
+
+    fn name(&self) -> &'static str {
+        NAME
+    }
+
+    fn sdk_version(&self) -> &'static str {
+        SDK_VERSION
     }
 }
 

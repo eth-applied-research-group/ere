@@ -11,6 +11,7 @@ use zkvm_interface::{
     zkVMError,
 };
 
+include!(concat!(env!("OUT_DIR"), "/name_and_sdk_version.rs"));
 mod error;
 mod jolt_methods;
 mod utils;
@@ -101,6 +102,14 @@ impl zkVM for EreJolt {
         } else {
             Err(zkVMError::from(JoltError::ProofVerificationFailed))
         }
+    }
+
+    fn name(&self) -> &'static str {
+        NAME
+    }
+
+    fn sdk_version(&self) -> &'static str {
+        SDK_VERSION
     }
 }
 
