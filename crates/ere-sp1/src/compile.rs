@@ -22,7 +22,7 @@ pub fn compile(guest_program_full_path: &Path) -> Result<Vec<u8>, CompileError> 
         .to_str()
         .ok_or_else(|| CompileError::InvalidTempOutputPath(elf_output_dir.path().to_path_buf()))?;
 
-    info!("Mounting guest program at: {}", guest_program_path_str);
+    info!("Compiling program: {}", guest_program_path_str);
     Command::new("docker")
         .args([
             "run",
