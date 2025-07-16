@@ -11,8 +11,6 @@ use zkvm_interface::{
     zkVMError,
 };
 
-include!(concat!(env!("`OUT_DIR`"), "/name_and_sdk_version.rs"));
-
 mod error;
 use crate::error::ProveError;
 use error::{CompileError, NexusError, VerifyError};
@@ -94,7 +92,7 @@ impl zkVM for EreNexus {
         }
 
         let now = std::time::Instant::now();
-        let (view, proof) = prover
+        let (_view, proof) = prover
             .prove_with_input(&(), &public_input)
             .map_err(|e| NexusError::Prove(ProveError::Client(e.into())))
             .map_err(zkVMError::from)?;
@@ -106,7 +104,7 @@ impl zkVM for EreNexus {
         Ok((bytes, ProgramProvingReport::new(elapsed)))
     }
 
-    fn verify(&self, mut proof: &[u8]) -> Result<(), zkVMError> {
+    fn verify(&self, proof: &[u8]) -> Result<(), zkVMError> {
         info!("Verifying proof…");
 
         let proof: Proof = bincode::deserialize(proof)
@@ -125,19 +123,19 @@ impl zkVM for EreNexus {
             &elf, // expected elf (program binary)
             &[],  // no associated data,
         )
-            .map_err(|e| NexusError::Verify(VerifyError::Client(e.into())))
-    .map_err(zkVMError::from);
+        .map_err(|e| NexusError::Verify(VerifyError::Client(e.into())))
+        .map_err(zkVMError::from)?;
 
         info!("Verify Succeeded!");
         Ok(())
     }
 
     fn name(&self) -> &'static str {
-        "NAME"
+        "nexus"
     }
 
     fn sdk_version(&self) -> &'static str {
-        SDK_VERSION
+        "0.3.4"
     }
 }
 

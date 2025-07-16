@@ -2315,7 +2315,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
- "build-utils",
  "nexus-sdk",
  "thiserror 2.0.12",
  "tracing",
