@@ -53,8 +53,6 @@ impl zkVM for EreNexus {
     fn execute(&self, inputs: &Input) -> Result<zkvm_interface::ProgramExecutionReport, zkVMError> {
         let start = Instant::now();
 
-        // One convention that may be useful for simplifying the design is that all inputs to the vm are private and all outputs are public.
-        // If an input should be public, then it could just be returned from the function.
         // let private_input =  vec![] ;
         let mut public_input = vec![];
         for input in inputs.iter() {
@@ -80,6 +78,8 @@ impl zkVM for EreNexus {
             .map_err(|e| NexusError::Prove(ProveError::Client(e.into())))
             .map_err(zkVMError::from)?;
 
+        // One convention that may be useful for simplifying the design is that all inputs to the vm are private and all outputs are public.
+        // If an input should be public, then it could just be returned from the function.
         // let private_input =  vec![] ;
         let mut public_input = vec![];
         for input in inputs.iter() {
