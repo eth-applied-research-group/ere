@@ -1,5 +1,5 @@
-use build_utils::gen_name_and_sdk_version;
+use build_utils::{detect_and_generate_name_and_sdk_version};
 
 fn main() {
-    gen_name_and_sdk_version("zisk", "0.8.1");
+    detect_and_generate_name_and_sdk_version("zisk", "0.8.1");
 }
