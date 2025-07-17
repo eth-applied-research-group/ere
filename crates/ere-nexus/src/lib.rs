@@ -63,6 +63,8 @@ impl zkVM for EreNexus {
                     .map_err(zkVMError::from)?,
             );
         }
+        // TODO: Doesn't catch execute for guest in nexus. so only left some dummy code(parse input) here.
+        //      Besides, public input is not supported yet, so we just pass an empty tuple
 
         Ok(ProgramExecutionReport {
             execution_duration: start.elapsed(),
