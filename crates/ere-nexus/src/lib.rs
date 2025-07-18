@@ -11,6 +11,8 @@ use zkvm_interface::{
     zkVMError,
 };
 
+include!(concat!(env!("OUT_DIR"), "/name_and_sdk_version.rs"));
+
 mod error;
 pub(crate) mod utils;
 
@@ -140,11 +142,11 @@ impl zkVM for EreNexus {
     }
 
     fn name(&self) -> &'static str {
-        "nexus"
+        NAME
     }
 
     fn sdk_version(&self) -> &'static str {
-        "0.3.4"
+        SDK_VERSION
     }
 }
 
