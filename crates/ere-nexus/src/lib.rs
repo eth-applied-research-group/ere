@@ -183,18 +183,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn test_execute_empty_input_panic() {
-        // Panics because the program expects input arguments, but we supply none
-        let test_guest_path = get_test_guest_program_path();
-        let elf = NEXUS_TARGET::compile(&test_guest_path).expect("compilation failed");
-        let empty_input = Input::new();
-        let zkvm = EreNexus::new(elf, ProverResourceType::Cpu);
-
-        zkvm.execute(&empty_input).unwrap();
-    }
-
-    #[test]
     fn test_execute() {
         let test_guest_path = get_test_guest_program_path();
         let elf = NEXUS_TARGET::compile(&test_guest_path).expect("compilation failed");

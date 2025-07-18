@@ -20,7 +20,7 @@ RUN /tmp/install_pico_sdk.sh && rm /tmp/install_pico_sdk.sh # Clean up the scrip
 ENV PICO_TOOLCHAIN_VERSION="nightly-2024-11-27"
 
 # Verify Pico installation
-RUN echo "Verifying Risc0 installation in Dockerfile (post-script)..." && cargo "+${PICO_TOOLCHAIN_VERSION}" pico --version
+RUN echo "Verifying Pico installation in Dockerfile (post-script)..." && cargo "+${PICO_TOOLCHAIN_VERSION}" pico --version
 
 # Copy the entire ere project context
 # The WORKDIR is /app from the base image
