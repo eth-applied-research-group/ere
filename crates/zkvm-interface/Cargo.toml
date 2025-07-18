@@ -14,6 +14,7 @@ thiserror = "2"
 auto_impl = "1.0"
 erased-serde = "0.4.6"
 humantime-serde = "1.1"
+dyn-clone = "1.0.19"
 
 [dev-dependencies]
 serde_json = "1"

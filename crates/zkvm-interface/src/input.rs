@@ -1,15 +1,25 @@
+use std::fmt::Debug;
+
 use bincode::Options;
+use dyn_clone::{DynClone, clone_trait_object};
 use erased_serde::Serialize as ErasedSerialize;
 use serde::Serialize;
 
+pub trait DebugErasedSerialize: DynClone + ErasedSerialize + std::fmt::Debug {}
+impl<T: ErasedSerialize + Clone + std::fmt::Debug> DebugErasedSerialize for T {}
+
+clone_trait_object!(DebugErasedSerialize);
+
+#[derive(Debug, Clone)]
 pub enum InputItem {
     /// A serializable object stored as a trait object
-    Object(Box<dyn ErasedSerialize>),
+    Object(Box<dyn DebugErasedSerialize + Send + Sync>),
     /// Pre-serialized bytes (e.g., from bincode)
     Bytes(Vec<u8>),
 }
 
 /// Represents a builder for input data to be passed to a ZKVM guest program.
+#[derive(Debug, Clone)]
 pub struct Input {
     items: Vec<InputItem>,
 }
@@ -28,7 +38,10 @@ impl Input {
     }
 
     /// Write a serializable value as a trait object
-    pub fn write<T: Serialize + 'static>(&mut self, value: T) {
+    pub fn write<T: Serialize + std::fmt::Debug + Clone + Send + Sync + 'static>(
+        &mut self,
+        value: T,
+    ) {
         self.items.push(InputItem::Object(Box::new(value)));
     }
 
@@ -91,7 +104,7 @@ mod input_erased_tests {
     use super::*;
     use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
     struct Person {
         name: String,
         age: u32,
