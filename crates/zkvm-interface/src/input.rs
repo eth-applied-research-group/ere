@@ -2,13 +2,14 @@ use std::fmt::Debug;
 
 use bincode::Options;
 use dyn_clone::{DynClone, clone_trait_object};
-use erased_serde::Serialize as ErasedSerialize;
+use erased_serde::{Serialize as ErasedSerialize, serialize_trait_object};
 use serde::Serialize;
 
 pub trait DebugErasedSerialize: DynClone + ErasedSerialize + std::fmt::Debug {}
 impl<T: ErasedSerialize + Clone + std::fmt::Debug> DebugErasedSerialize for T {}
 
 clone_trait_object!(DebugErasedSerialize);
+serialize_trait_object!(DebugErasedSerialize);
 
 #[derive(Debug, Clone)]
 pub enum InputItem {
