@@ -30,10 +30,10 @@ impl Compiler for NEXUS_TARGET {
         std::env::set_current_dir(path).map_err(|e| CompileError::Client(e.into()))?;
 
         let package_name = get_cargo_package_name(path)
-            .ok_or(anyhow::anyhow!(
+            .ok_or(CompileError::Client(Box::from(format!(
                 "Failed to get guest package name, where guest path: {:?}",
-                std::env::current_dir().unwrap().display()
-            ))
+                path
+            ))))
             .map_err(|e| CompileError::Client(e.into()))?;
         let mut prover_compiler = NexusCompiler::<CargoPackager>::new(&package_name);
         let elf_path = prover_compiler
