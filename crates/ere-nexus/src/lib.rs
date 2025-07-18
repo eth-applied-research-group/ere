@@ -12,12 +12,11 @@ use zkvm_interface::{
 };
 
 mod error;
-use crate::error::ProveError;
-use error::{CompileError, NexusError, VerifyError};
+pub(crate) mod utils;
 
-/// NOTE: nexus's guest package name must be "ere-nexus-guest"
-/// TODO: This should be configurable in the future, but for now we hardcode it.
-const PACKAGE: &str = "ere-nexus-guest";
+use crate::error::ProveError;
+use crate::utils::get_cargo_package_name;
+use error::{CompileError, NexusError, VerifyError};
 
 #[allow(non_camel_case_types)]
 pub struct NEXUS_TARGET;
@@ -33,7 +32,18 @@ impl Compiler for NEXUS_TARGET {
             "current_dir: {:?}",
             std::env::current_dir().unwrap().display()
         );
-        let mut prover_compiler = NexusCompiler::<CargoPackager>::new(PACKAGE);
+        let package_name =
+            std::env::var("CARGO_PKG_NAME").map_err(|e| CompileError::Client(e.into()))?;
+        println!("pakage_name: {}", package_name);
+        println!("aaaa");
+        let package_name = get_cargo_package_name(path)
+            .ok_or(anyhow::anyhow!(
+                "Failed to get guest package name, where guest path: {:?}",
+                std::env::current_dir().unwrap().display()
+            ))
+            .map_err(|e| CompileError::Client(e.into()))?;
+        println!("pakage_name: {}", package_name);
+        let mut prover_compiler = NexusCompiler::<CargoPackager>::new(&package_name);
         let elf_path = prover_compiler
             .build()
             .map_err(|e| CompileError::Client(e.into()))?;
@@ -202,14 +212,15 @@ mod tests {
     }
 
     #[test]
-    fn test_prove_verify() {
+    fn test_prove_verify() -> anyhow::Result<()> {
         let test_guest_path = get_test_guest_program_path();
-        let elf = NEXUS_TARGET::compile(&test_guest_path).expect("compilation failed");
+        let elf = NEXUS_TARGET::compile(&test_guest_path)?;
         let mut input = Input::new();
         input.write(10u64);
 
         let zkvm = EreNexus::new(elf, ProverResourceType::Cpu);
         let (proof, _) = zkvm.prove(&input).unwrap();
         zkvm.verify(&proof).expect("proof should verify");
+        Ok(())
     }
 }
