@@ -7,9 +7,9 @@ use serde::Serialize;
 #[derive(Clone)]
 pub enum InputItem {
     /// A serializable object stored as a trait object
-    Object(Arc<dyn ErasedSerialize + Send + Sync>),
+    Object(Arc<Box<dyn ErasedSerialize + Send + Sync>>),
     /// Pre-serialized bytes (e.g., from bincode)
-    Bytes(Arc<Vec<u8>>),
+    Bytes(Vec<u8>),
 }
 
 impl Debug for InputItem {
@@ -42,12 +42,13 @@ impl Input {
 
     /// Write a serializable value as a trait object
     pub fn write<T: Serialize + Send + Sync + 'static>(&mut self, value: T) {
-        self.items.push(InputItem::Object(Arc::new(value)));
+        self.items
+            .push(InputItem::Object(Arc::new(Box::new(value))));
     }
 
     /// Write pre-serialized bytes directly
     pub fn write_bytes(&mut self, bytes: Vec<u8>) {
-        self.items.push(InputItem::Bytes(Arc::new(bytes)));
+        self.items.push(InputItem::Bytes(bytes));
     }
 
     /// Get the number of items stored
