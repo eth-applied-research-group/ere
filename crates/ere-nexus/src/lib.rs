@@ -28,21 +28,13 @@ impl Compiler for NEXUS_TARGET {
 
     fn compile(path: &std::path::Path) -> Result<Self::Program, Self::Error> {
         std::env::set_current_dir(path).map_err(|e| CompileError::Client(e.into()))?;
-        println!(
-            "current_dir: {:?}",
-            std::env::current_dir().unwrap().display()
-        );
-        let package_name =
-            std::env::var("CARGO_PKG_NAME").map_err(|e| CompileError::Client(e.into()))?;
-        println!("pakage_name: {}", package_name);
-        println!("aaaa");
+
         let package_name = get_cargo_package_name(path)
             .ok_or(anyhow::anyhow!(
                 "Failed to get guest package name, where guest path: {:?}",
                 std::env::current_dir().unwrap().display()
             ))
             .map_err(|e| CompileError::Client(e.into()))?;
-        println!("pakage_name: {}", package_name);
         let mut prover_compiler = NexusCompiler::<CargoPackager>::new(&package_name);
         let elf_path = prover_compiler
             .build()
@@ -108,7 +100,7 @@ impl zkVM for EreNexus {
             );
         }
 
-        let now = std::time::Instant::now();
+        let now = Instant::now();
         let (_view, proof) = prover
             .prove_with_input(&private_input, &())
             .map_err(|e| NexusError::Prove(ProveError::Client(e.into())))
@@ -122,7 +114,7 @@ impl zkVM for EreNexus {
     }
 
     fn verify(&self, proof: &[u8]) -> Result<(), zkVMError> {
-        info!("Verifying proof…");
+        info!("Verifying proof...");
 
         let proof: Proof = bincode::deserialize(proof)
             .map_err(|err| NexusError::Verify(VerifyError::Bincode(err)))?;
