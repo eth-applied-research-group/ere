@@ -27,7 +27,12 @@ impl Compiler for NEXUS_TARGET {
 
     type Program = PathBuf;
 
-    fn compile(_: &std::path::Path) -> Result<Self::Program, Self::Error> {
+    fn compile(path: &std::path::Path) -> Result<Self::Program, Self::Error> {
+        std::env::set_current_dir(path).map_err(|e| CompileError::Client(e.into()))?;
+        println!(
+            "current_dir: {:?}",
+            std::env::current_dir().unwrap().display()
+        );
         let mut prover_compiler = NexusCompiler::<CargoPackager>::new(PACKAGE);
         let elf_path = prover_compiler
             .build()
