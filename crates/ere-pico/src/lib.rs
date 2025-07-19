@@ -40,7 +40,7 @@ impl Compiler for PICO_TARGET {
         }
 
         // 3. Locate the ELF file
-        let elf_path = path.join("elf/riscv32im-pico-zkvm-elf");
+        let elf_path = guest_path.join("elf/riscv32im-pico-zkvm-elf");
 
         if !elf_path.exists() {
             return Err(PicoError::ElfNotFound(elf_path));
