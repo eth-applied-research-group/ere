@@ -17,6 +17,10 @@ pub trait Compiler {
     type Program: Clone + Send + Sync;
 
     /// Compiles the program and returns the program
+    ///
+    /// # Arguments
+    /// * `mount_directory` - The base directory (workspace root)
+    /// * `guest_relative` - The relative path from mount_directory to the guest program
     fn compile(mount_directory: &Path, guest_relative: &Path)
     -> Result<Self::Program, Self::Error>;
 }

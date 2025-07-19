@@ -1,5 +1,5 @@
 use pico_sdk::client::DefaultProverClient;
-use std::{process::Command, time::Instant};
+use std::{path::Path, process::Command, time::Instant};
 use zkvm_interface::{
     Compiler, Input, InputItem, ProgramExecutionReport, ProgramProvingReport, ProverResourceType,
     zkVM, zkVMError,
@@ -17,15 +17,20 @@ impl Compiler for PICO_TARGET {
 
     type Program = Vec<u8>;
 
-    fn compile(path: &std::path::Path) -> Result<Self::Program, Self::Error> {
+    fn compile(
+        workspace_directory: &Path,
+        guest_relative: &Path,
+    ) -> Result<Self::Program, Self::Error> {
+        let guest_path = workspace_directory.join(guest_relative);
+
         // 1. Check guest path
-        if !path.exists() {
-            return Err(PicoError::PathNotFound(path.to_path_buf()));
+        if !guest_path.exists() {
+            return Err(PicoError::PathNotFound(guest_path.to_path_buf()));
         }
 
         // 2. Run `cargo pico build`
         let status = Command::new("cargo")
-            .current_dir(path)
+            .current_dir(&guest_path)
             .env("RUST_LOG", "info")
             .args(["pico", "build"])
             .status()?; // From<io::Error> → Spawn
@@ -167,7 +172,7 @@ mod tests {
         let test_guest_path = get_compile_test_guest_program_path();
         println!("Using test guest path: {}", test_guest_path.display());
 
-        match PICO_TARGET::compile(&test_guest_path) {
+        match PICO_TARGET::compile(&test_guest_path, Path::new("")) {
             Ok(elf_bytes) => {
                 assert!(!elf_bytes.is_empty(), "ELF bytes should not be empty.");
             }
