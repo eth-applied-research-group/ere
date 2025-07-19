@@ -145,7 +145,7 @@ impl zkVM for ErePico {
 #[cfg(test)]
 mod tests {
     use crate::PICO_TARGET;
-    use std::path::PathBuf;
+    use std::{path::Path, path::PathBuf};
     use zkvm_interface::Compiler;
 
     fn get_compile_test_guest_program_path() -> PathBuf {
